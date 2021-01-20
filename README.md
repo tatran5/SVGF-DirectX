@@ -1,1 +1,1 @@
-# Spatiotemporal Variance-Guided Filtering - Direct X
+# Spatiotemporal Variance-Guided Filtering - DirectX

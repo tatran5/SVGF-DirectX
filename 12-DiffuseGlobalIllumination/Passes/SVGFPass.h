@@ -48,17 +48,22 @@ protected:
 	// The RenderPass class defines various methods we can override to specify this pass' properties. 
 	bool appliesPostprocess() override { return true; }
 
-    // Information about the rendering texture we're accumulating into
-	std::string                   mAccumChannel;
+    // Information about the input rendering texture we're using
+	std::string                   mInputColorBufferName;
 
-	// State for our accumulation shader
-	FullscreenLaunch::SharedPtr   mpAccumShader;
+	// Shaders
+	FullscreenLaunch::SharedPtr   mpShaderIntegrateColor;
+	FullscreenLaunch::SharedPtr   mpShaderVarianceEstimation;
+	FullscreenLaunch::SharedPtr   mpShaderVarianceFiltering;
+	FullscreenLaunch::SharedPtr   mpShaderFinalColor;
+
 	GraphicsState::SharedPtr      mpGfxState;
 	Texture::SharedPtr            mpLastFrame;
-	Fbo::SharedPtr                mpInternalFbo;
 
-	// Is our accumulation enabled?
-	bool                          mDoAccumulation = true;
+	// Internal frame buffers
+	Fbo::SharedPtr                mpInternalFboPrevIntColor;
+	Fbo::SharedPtr                mpInternalFboPrevIntMoments;
+	Fbo::SharedPtr                mpInternalFboHistoryLength;
 
 	// How many frames have we accumulated so far?
 	uint32_t                      mAccumCount = 0;

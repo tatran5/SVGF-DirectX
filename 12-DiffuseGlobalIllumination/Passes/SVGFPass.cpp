@@ -20,35 +20,57 @@
 
 namespace {
 	// Where is our shader located?
-    const char *kShaderIntegratedColor = "Tutorial12\\SVGFintegratedColor.ps.hlsl";
-		const char *kShaderVarianceEstimation = "Tutorial12\\SVGFvarianceEstimation.ps.hlsl";
-		const char* kShaderVarianceFiltering = "Tutorial12\\SVGFvarianceFiltering.ps.hlsl";
+	const char* kShaderIntegratedColor = "Tutorial12\\SVGFintegratedColor.ps.hlsl";
+	const char* kShaderVarianceEstimation = "Tutorial12\\SVGFvarianceEstimation.ps.hlsl";
+	const char* kShaderVarianceFiltering = "Tutorial12\\SVGFvarianceFiltering.ps.hlsl";
+	const char* kShaderFinalColor = "Tutorial12\\SVGFfinalColor.ps.hlsl";
+
+	// Names of internal frame buffer
+	const char* kInternalBufferPrevIntColor = "PreviousIntegratedColor";
+	const char* kInternalBufferPrevIntMoments = "PreviousIntegratedMoments";
+	const char* kInternalBufferHistoryLength = "HistoryLength";
+	
+	// Names of input buffers
+	const char* kInputWorldPosition = "WorldPostion";
+	const char* kInputWorldNormal = "WorldNormal";
+	const char* kInputViewDepth = "ViewDepth";
 };
 
+// Input should be color of the current frame
 // Define our constructor methods
-SVGFPass::SharedPtr SVGFPass::create(const std::string &bufferToAccumulate)
-{ 
-	return SharedPtr(new SVGFPass(bufferToAccumulate));
+SVGFPass::SharedPtr SVGFPass::create(const std::string& inputColorBufferName)
+{
+	return SharedPtr(new SVGFPass(inputColorBufferName));
 }
 
-SVGFPass::SVGFPass(const std::string &bufferToAccumulate)
+SVGFPass::SVGFPass(const std::string& inputColorBufferName)
 	: ::RenderPass("SVGF Pass", "SVGF Options")
 {
-	mAccumChannel = bufferToAccumulate;
+	mInputColorBufferName = inputColorBufferName;
 }
 
 bool SVGFPass::initialize(RenderContext* pRenderContext, ResourceManager::SharedPtr pResManager)
 {
 	// Stash our resource manager; ask for the texture the developer asked us to accumulate
 	mpResManager = pResManager;
-	mpResManager->requestTextureResource(mAccumChannel);
+	mpResManager->requestTextureResources({
+		mInputColorBufferName,
+		kInternalBufferPrevIntColor,
+		kInternalBufferPrevIntMoments,
+		kInternalBufferHistoryLength
+		});
 
 	// Set the default scene to load
 	mpResManager->setDefaultSceneName("Data/pink_room/pink_room.fscene");
 
 	// Create our graphics state and an accumulation shader
 	mpGfxState = GraphicsState::create();
-	mpAccumShader = FullscreenLaunch::create(kAccumShader);
+	
+	mpShaderIntegrateColor = FullscreenLaunch::create(kShaderIntegratedColor);
+	mpShaderVarianceEstimation = FullscreenLaunch::create(kShaderVarianceEstimation);
+	mpShaderVarianceFiltering = FullscreenLaunch::create(kShaderVarianceFiltering);
+	mpShaderFinalColor = FullscreenLaunch::create(kShaderFinalColor);
+	
 	return true;
 }
 
@@ -60,32 +82,32 @@ void SVGFPass::initScene(RenderContext* pRenderContext, Scene::SharedPtr pScene)
 
 void SVGFPass::resize(uint32_t width, uint32_t height)
 {
-    // Create / resize a texture to store the previous frame.
-	//    Parameters: width, height, texture format, texture array size, #mip levels, initialization data, how we expect to use it.
-    mpLastFrame = Texture::create2D(width, height, ResourceFormat::RGBA32Float, 1, 1, nullptr, ResourceManager::kDefaultFlags);
+	// Create / resize a texture to store the previous frame.
+//    Parameters: width, height, texture format, texture array size, #mip levels, initialization data, how we expect to use it.
+	mpLastFrame = Texture::create2D(width, height, ResourceFormat::RGBA32Float, 1, 1, nullptr, ResourceManager::kDefaultFlags);
 
-    // We need a framebuffer to attach to our graphics pipe state (when running our full-screen pass).  We can ask our
-	//    resource manager to create one for us, with specified width, height, and format and one color buffer.
+	// We need a framebuffer to attach to our graphics pipe state (when running our full-screen pass).  We can ask our
+//    resource manager to create one for us, with specified width, height, and format and one color buffer.
 	mpInternalFbo = ResourceManager::createFbo(width, height, ResourceFormat::RGBA32Float);
-    mpGfxState->setFbo(mpInternalFbo);
+	mpGfxState->setFbo(mpInternalFbo);
 
-    // Whenever we resize, we'd better force accumulation to restart
+	// Whenever we resize, we'd better force accumulation to restart
 	mAccumCount = 0;
 }
 
 void SVGFPass::renderGui(Gui* pGui)
 {
 	// Print the name of the buffer we're accumulating from and into.  Add a blank line below that for clarity
-    pGui->addText( (std::string("Accumulating buffer:   ") + mAccumChannel).c_str() );
-    pGui->addText("");  
+	pGui->addText((std::string("Accumulating buffer:   ") + mAccumChannel).c_str());
+	pGui->addText("");
 
 	// Add a toggle to enable/disable temporal accumulation.  Whenever this toggles, reset the
 	//     frame count and tell the pipeline we're part of that our rendering options have changed.
-    if (pGui->addCheckBox(mDoAccumulation ? "Accumulating samples temporally" : "No temporal accumulation", mDoAccumulation))
-    {
+	if (pGui->addCheckBox(mDoAccumulation ? "Accumulating samples temporally" : "No temporal accumulation", mDoAccumulation))
+	{
 		mAccumCount = 0;
-        setRefreshFlag();
-    }
+		setRefreshFlag();
+	}
 
 	// Display a count of accumulated frames
 	pGui->addText("");
@@ -94,33 +116,27 @@ void SVGFPass::renderGui(Gui* pGui)
 
 void SVGFPass::execute(RenderContext* pRenderContext)
 {
-    // Grab the texture to accumulate
+	// Grab the texture to accumulate
 	Texture::SharedPtr inputTexture = mpResManager->getTexture(mAccumChannel);
 
 	// If our input texture is invalid, or we've been asked to skip accumulation, do nothing.
-    if (!inputTexture || !mDoAccumulation) return;
-   
-	// If the camera in our current scene has moved, we want to reset accumulation
-	if (hasCameraMoved())
-	{
-		mAccumCount = 0;
-		mpLastCameraMatrix = mpScene->getActiveCamera()->getViewMatrix();
-	}
+	if (!inputTexture || !mDoAccumulation) return;
 
-    // Set shader parameters for our accumulation pass
+
+	// Set shader parameters for our accumulation pass
 	auto shaderVars = mpAccumShader->getVars();
 	shaderVars["PerFrameCB"]["gAccumCount"] = mAccumCount++;
 	shaderVars["gLastFrame"] = mpLastFrame;
-	shaderVars["gCurFrame"]  = inputTexture;
+	shaderVars["gCurFrame"] = inputTexture;
 
-    // Execute the accumulation shader
-    mpAccumShader->execute(pRenderContext, mpGfxState);
+	// Execute the accumulation shader
+	mpAccumShader->execute(pRenderContext, mpGfxState);
 
-    // We've accumulated our result.  Copy that back to the input/output buffer
-    pRenderContext->blit(mpInternalFbo->getColorTexture(0)->getSRV(), inputTexture->getRTV());
+	// We've accumulated our result.  Copy that back to the input/output buffer
+	pRenderContext->blit(mpInternalFbo->getColorTexture(0)->getSRV(), inputTexture->getRTV());
 
-    // Also keep a copy of the current accumulation for use next frame 
-    pRenderContext->blit(mpInternalFbo->getColorTexture(0)->getSRV(), mpLastFrame->getRTV());
+	// Also keep a copy of the current accumulation for use next frame 
+	pRenderContext->blit(mpInternalFbo->getColorTexture(0)->getSRV(), mpLastFrame->getRTV());
 }
 
 void SVGFPass::stateRefreshed()

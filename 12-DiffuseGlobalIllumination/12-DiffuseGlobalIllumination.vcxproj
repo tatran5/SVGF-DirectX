@@ -21,6 +21,7 @@
     <ClCompile Include="..\SharedUtils\SceneLoaderWrapper.cpp" />
     <ClCompile Include="..\SharedUtils\SimpleVars.cpp" />
     <ClCompile Include="Passes\SimpleDiffuseGIPass.cpp" />
+    <ClCompile Include="Passes\SVGFPass.cpp" />
     <ClCompile Include="Tutor12-DiffuseGlobalIllumination.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -34,6 +35,7 @@
     <ClInclude Include="..\SharedUtils\SceneLoaderWrapper.h" />
     <ClInclude Include="..\SharedUtils\SimpleVars.h" />
     <ClInclude Include="Passes\SimpleDiffuseGIPass.h" />
+    <ClInclude Include="Passes\SVGFPass.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Data\Tutorial12\simpleDiffuseGI.rt.hlsl">

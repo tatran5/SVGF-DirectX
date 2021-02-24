@@ -179,7 +179,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BUILDING_SHARED_DLL;IMGUI_API=__declspec(dllexport);WIN32;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;_DEBUG;GLM_FORCE_DEPTH_ZERO_TO_ONE;FALCOR_DXR;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BUILDING_SHARED_DLL;IMGUI_API=__declspec(dllexport);WIN32;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING;_DEBUG;GLM_FORCE_DEPTH_ZERO_TO_ONE;FALCOR_DXR;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\Source\;$(ProjectDir)\..\Externals\GLM\;$(ProjectDir)..\;$(ProjectDir)..\Externals\pybind11\include\;$(ProjectDir)..\Externals\;$(ProjectDir)..\Externals\Python\Include\;$(ProjectDir)..\Externals\rapidjson\include\;$(ProjectDir)..\Externals\VulkanSDK\Include\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>

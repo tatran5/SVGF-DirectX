@@ -29,6 +29,10 @@ Texture2D<float4>   gRawColorTex;
 Texture2D<float4>   gWorldPosTex;
 Texture2D<float4>   gWorldNormTex;
 
+Texture2D<float4>   gPrevIntegratedColorTex;
+Texture2D<float4>   gPrevMoment;
+
+
 bool isBackProjectionValid(int2 prevPixPos) {
   if (any(prevPixPos < int2(0, 0)) || any(prevPixPos >= gTexDim)) return false;
 
@@ -40,19 +44,74 @@ bool isBackProjectionValid(int2 prevPixPos) {
 }
 
 
-void bilinearTapFilter(float sqrtTapSize, float2 prevPixPos, out uint consistentSampleCount, out float prevLuminance, out float prevMoment) {
-  // Make sure that the offsets of the following 
-  // (we will only use 2x2 and 3x3 offset when this function is called though)
-  // 2x2: 0 -> 1,   3x3: -1 -> 1,   4x4: -1 -> 2,   5x5: -2 -> 2,   etc.
-  int startOffset = -floor((sqrtTapSize - 1.f) / 2.f);
-  int endOffset = floor(sqrtTapSize / 2.f);
+// 2x2 bilinear tap filter (bilinear interpolation)
+// For all of the valid previous neighbor samples (including the previous pixel),
+// To find the corresponding value, add up the value contribution from those samples
+// (with their weights factored in using bilinear interpolation) and redistribute the value
+// by dividing the weight sum
+void tapFilter2x2(float2 prevPixPos, out uint consistentSampleCount, out float4 prevIntegratedColor, out float2 prevMoment) {
+  // Set everything to 0 just in case
+  consistentSampleCount = 0;
+  prevIntegratedColor = float4(0.f);
+  prevMoment = float2(0.f);
+  
+  bool sampleIsConsistent[4] = { false, false, false, false }; // Track whick back project is valid
+  int2 sampleOffsets[4] = { int2(0, 0), int2(1, 0), int2(1, 1), int2(0, 1) };
+  
+  for (int sampleIdx = 0; sampleIdx < 4; sampleIdx++) {
+    int2 prevSamplePixPos = int2(prevPixPos) + sampleOffsets[sampleIdx];
+    if (isBackProjectionValid(prevSamplePixPos)) {
+      sampleIsConsistent[sampleIdx] = true;
+      consistentSamplesCount++;
+    }
+  }
 
-  for (int x = startOffset; x < endOffset; x++) {
-    for (int y = startOffset; y < endOffset; y++) {
+  if (consistentSamplesCount > 0) {
+    // perform bilinear interpolation
+    float2 prevPixPosFrac = frac(prevPixPos.xy);
+    float weightSum = 0.f
+    float sampleWeights[4] = {
+      (1 - prevPixPosFrac.x) * (1 - prevPixPosFrac.y), // (0, 0)
+           prevPixPosFrac.x  * (1 - prevPixPosFrac.y), // (1, 0)
+           prevPixPosFrac.x  * prevPixPosFrac.y,       // (1, 1)
+      (1 - prevPixPosFrac.x) * prevPixPosFrac.y        // (0, 1)
+    };
+    
+    for (int sampleIdx = 0; sampleIdx < 4; sampleIdx++) {
+      int2 prevSamplePixPos = int2(prevPixPos) + sampleOffsets[sampleIdx];
+      if (sampleIsConsistent[sampleIdx]) {
+        prevIntegratedColor += sampleWeights[sampleIdx] * gPrevIntegratedColorTex[prevSamplePixPos];
+        prevMoment += sampleWeights[sampleIdx] * gPrevMoments[sampleIdx];
+        weightSum += sampleWeights[sampleIdx];
+      }
+    }
 
+    // Redistribute weights since we might not use all taps
+    if (weightSum > 0.001f) { // in case division by 0
+      prevIntegratedColor /= weightSum;
+      prevMoment /= weightSum;
     }
   }
 }
+
+
+// 3x3 uniform tap filter (bilinear interpolation)
+// For all of the valid previous neighbor samples (including the previous pixel),
+// To find the corresponding value, add up the value contribution from those samples
+// and redistribute the value uniformly by dividing the number of samples contributing
+void tapFilter3x3(float2 prevPixPos, out uint consistentSampleCount, out float prevLuminance, out float prevMoment) {
+  // Set everything to 0 just in case
+  consistentSampleCount = 0;
+  prevIntegratedColor = float4(0.f);
+  prevMoment = float2(0.f);
+
+  float weightSum = 0.f;
+  for (int x = -1; x <= 1; x++) {
+    for (int y = -1; y <=1; y++)
+  }
+ 
+}
+
 
 float4 main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
 {
@@ -67,42 +126,16 @@ float4 main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
     (prevScreenPos.x + 1.f) / 2.f * gTexDim.x,
     (1.f - prevScreenPos.y) / 2.f * gTexDim.y
     );
-  float2 prevPixPosFrac = frac(prevPixPos.xy);
 
-  // Perform bilinear tap filter. If 2x2 fails, then try 3x3
+  // Perform filter. If 2x2 fails, then try 3x3
   int consistentSamplesCount = 0;
-  bool samplesAreConsistent[4] = {false, false, false, false}; // Track whick back project is valid
-  int2 sampleOffsets[4] = {int2(0, 0), int2(1, 0), int2(1, 1), int2(0, 1)};
-  for (int sampleIdx = 0; sampleIdx < 4; sampleIdx++) {
-    int2 prevSamplePixPos = int2(prevPixPos) + sampleOffsets[sampleIdx];
-    if (isBackProjectionValid(prevSamplePixPos)) {
-      samplesAreConsistent[sampleIdx] = true;
-      consistentSamplesCount++;
-    }
-  }
+  float prevLuminance = 0.f;
+  float prevMoment = 0.f;
 
-  if (consistentSamplesCount > 0) {
-    // If there are some consistent samples within the 2x2 bilinear tap filter, 
-    // perform bilinear interpolation
-    float bilinearWeights[4] = {
-      (1 - x) * (1 - y), // (0, 0)
-           x * (1 - y), // (1, 0)
-           x * y,       // (1, 1)
-      (1 - x) * y       // (0, 1)
-    };
+  tapFilter2x2(prevPixPos, consistentSampleCount, prevLuminance, prevMoment);s
 
-  } else { 
-    // If no consistent sample within the 2x2 bilinear tap filter, 
-    // then perform 3x3 filter to find suitable samples elsewhere
-    for (int x = -1; x <= 1; x++) {
-      for (int y = -1; y <= 1; x++) {
-        int2 prevSamplePixPos = int2(prevPixPos)+ int2(x, y);
-        bool backProjIsValid = isBackProjectionValid(prevSamplePixPos);
-        if (backProjIsValid) {
-          consistentSamplesCount++;
-        }
-      }
-    }
+  if (consistentSamplesCount == 0) {
+    tapFilter3x3(prevPixPos, consistentSampleCount, prevLuminance, prevMoment);
   }
 
   return gRawColorTex[pixPos];

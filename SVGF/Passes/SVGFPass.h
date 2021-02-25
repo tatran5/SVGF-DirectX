@@ -51,7 +51,7 @@ protected:
 	// Information about the rendering textures
 	std::string mRawColorTexName;
 	std::string mOutputTexName;
-
+	uint2				mTexDim;
 
 	// State for our accumulation shader
 	FullscreenLaunch::SharedPtr   mpAccumShader;

@@ -19,15 +19,45 @@
 cbuffer PerFrameCB
 {
   uint gAccumCount;
+  float4x4 gPrevViewProjMatrix;
+  uint gTexWidth;
+  uint gTexHeight;
+  uint2 gTexDim;
 }
 
 Texture2D<float4>   gRawColorTex; 
 Texture2D<float4>   gWorldPosTex;
 Texture2D<float4>   gWorldNormTex;
 
+bool isBackProjectionValid(int2 prevPixPos) {
+  if (any(prevPixPos < int2(0, 0)) || any(prevPixPos >= gTexDim)) return false;
+
+  // TODO: normal comparison
+
+  // TODO: depth comparison
+
+  return true;
+}
+
 float4 main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
 {
   uint2 pixPos = (uint2)pos.xy;
+  float4 worldPos = gWorldPosTex[pixPos];
 
-  return gWorldNormTex[pixPos];
+  // Compute previous pixel position using the current world position
+  // https://docs.google.com/presentation/d/1YkDE7YAqoffC9wUmDxFo9WZjiLqWI5SlQRojOeCBPGs/edit#slide=id.g2492ec6f45_0_342
+  float4 prevViewPos = mul(worldPos, gPrevViewProjMatrix); // the order due to row-major  https://stackoverflow.com/questions/16578765/hlsl-mul-variables-clarification
+  float4 prevScreenPos = prevViewPos / prevViewPos.w;
+  int2 prevPixPos = int2 (
+    (prevScreenPos.x + 1.f) / 2.f * gTexDim.x,
+    (1.f - prevScreenPos.y) / 2.f * gTexDim.y
+    );
+
+  bool backProjIsValid = isBackProjectionValid(prevPixPos);
+
+  if (!backProjIsValid) {
+    return float4(1.f, 1.f, 0.f, 1.f);
+  }
+
+  return gRawColorTex[pixPos];
 }

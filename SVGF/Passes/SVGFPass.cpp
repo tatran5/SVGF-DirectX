@@ -86,6 +86,8 @@ void SVGFPass::resize(uint32_t width, uint32_t height)
 
 	// Whenever we resize, we'd better force accumulation to restart
 	mAccumCount = 0;
+
+	mTexDim = ivec2(width, height);
 }
 
 void SVGFPass::renderGui(Gui* pGui)
@@ -107,14 +109,6 @@ void SVGFPass::renderGui(Gui* pGui)
 	pGui->addText((std::string("Frames accumulated: ") + std::to_string(mAccumCount)).c_str());
 }
 
-bool SVGFPass::hasCameraMoved()
-{
-	// Has our camera moved?
-	return mpScene &&                      // No scene?  Then the answer is no
-		mpScene->getActiveCamera() &&   // No camera in our scene?  Then the answer is no
-		(mpPrevViewProjMatrix != mpScene->getActiveCamera()->getViewProjMatrix());   // Compare the current matrix with the last one
-}
-
 void SVGFPass::execute(RenderContext* pRenderContext)
 {
 	// Grab the texture to accumulate
@@ -128,27 +122,23 @@ void SVGFPass::execute(RenderContext* pRenderContext)
 	// If our output texture is invalid, or we've been asked to skip accumulation, do nothing.
 	if (!pOutputTex || !mDoAccumulation) return;
 
-	// If the camera in our current scene has moved, we want to reset accumulation
-	if (hasCameraMoved())
-	{
-		mAccumCount = 0;
-		mpPrevViewProjMatrix = mpScene->getActiveCamera()->getViewProjMatrix();
-	}
-
 	// Set shader parameters for our accumulation
 	auto shaderVars = mpAccumShader->getVars();
+	shaderVars["PerFrameCB"]["gPrevViewProjMatrix"] = mpPrevViewProjMatrix;
+	shaderVars["PerFrameCB"]["gTexDim"] = mTexDim;
 	shaderVars["gRawColorTex"] = pRawColorTex;
 	shaderVars["gWorldPosTex"] = pWorldPosTex;
 	shaderVars["gWorldNormTex"] = pWorldNormTex;
-	
-	//shaderVars["gWolrdPosTex"] = pRawColorTex;
-	//shaderVars["gWorldNormTex"] = pRawColorTex;
 
 	// Do the accumulation
 	mpAccumShader->execute(pRenderContext, mpGfxState);
 
+
 	// We've accumulated our result.  Copy that back to the input/output buffer
 	pRenderContext->blit(mpInternalFbo->getColorTexture(0)->getSRV(), pOutputTex->getRTV());
+
+	// Update fields to be used in next iteration
+	mpPrevViewProjMatrix = mpScene->getActiveCamera()->getViewProjMatrix();
 }
 
 void SVGFPass::stateRefreshed()

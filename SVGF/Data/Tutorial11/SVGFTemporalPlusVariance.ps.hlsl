@@ -18,23 +18,67 @@
 
 cbuffer PerFrameCB
 {
-   
+	float4x4 gPrevViewProjMat;
 }
 
-Texture2D<float4>   gRawColor;
-Texture2D<float4>   gOutput;
+
+Texture2D<float4>   gWorldPos;
+Texture2D<float4>		gWorldNorm;
+
+//Texture2D<float4>   gPrevWorldPos;
+//Texture2D<float4>		gPrevWorldNorm;
+
+Texture2D<float4>		gRawColor;
+
+Texture2D<float4>		gMoment;
+Texture2D<float4>		gIntegratedColor;
+Texture2D<float4>		gLength;
+
+RWTexture2D<float4>   gOutput;
+
+bool isBackProjectValid(int2 prevPixPos, uint2 texDim) {
+	
+	// Invalid if outside screen
+	if (any(prevPixPos < int2(1, 1)) || any(prevPixPos >= texDim)) return false;
+
+	// Valid if normals are not too different
+	// TODO 
+	/*float3 prevNorm = gPrevWorldPos[prevPixPos].xyz;
+	if (distance(prevNorm, curNorm) / (fwidthNormal + 1e-2) > 1) return false;*/
+
+	// TODO: depth comparison
+
+	return true;
+}
 
 float4 main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
 {
-	uint2 pixelPos = (uint2)pos.xy;
-	//gOutput[pixelPos] = gRawColor[pixelPos];
+	
+	uint2 pixPos = (uint2)pos.xy;	
+	float4 worldPos = gWorldPos[pixPos];
 
+	int2 texDim = getTextureDims(gRawColor, 0);
+
+	// Find the position of previous pixel coordinate with the same world position
+	// https://docs.google.com/presentation/d/1YkDE7YAqoffC9wUmDxFo9WZjiLqWI5SlQRojOeCBPGs/edit#slide=id.g2492ec6f45_0_342
+	float4 prevViewSp = mul(gPrevViewProjMat, gWorldPos); // mul(x, y) = x * y where both are matrices
+	float4 prevScreenSp = prevViewSpace / prevViewSpace.w;
+	int2 prevPixPos = int2(
+		(prevScreenSp.x + 1.f) / 2.f * texDim.x,
+		(1.f - prevScreenSp.y) / 2.f * texDim.y);
+
+	bool backProjIsValid = isBackProjectValid(prevPixPos, texDim);
+	if (backProjIsValid) {
+		return gRawColor[pixelPos];
+	}
+
+	// gOutput[pixPos] = gRawColor[pixPos];
 
 	//   float4 curColor = gCurFrame[pixelPos];
 	//   float4 prevColor = gLastFrame[pixelPos];
 
 	 //return (gAccumCount * prevColor + curColor) / (gAccumCount + 1);
 	
-	return gRawColor[pixelPos];
+	return float4(0.f);
 
 }

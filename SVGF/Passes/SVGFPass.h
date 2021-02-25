@@ -37,6 +37,7 @@ protected:
   // Implementation of RenderPass interface
   bool initialize(RenderContext* pRenderContext, ResourceManager::SharedPtr pResManager) override;
   void execute(RenderContext* pRenderContext) override;
+  void resize(uint32_t width, uint32_t height) override;
 
   // Rendering state
   RayLaunch::SharedPtr                    mpRays;                 ///< Our wrapper around a DX Raytracing pass
@@ -46,10 +47,13 @@ protected:
   GraphicsState::SharedPtr      mpGfxState;
   FullscreenLaunch::SharedPtr   mpTemporalPlusVarianceShader;
 
-
   // Texture related
   std::string mRawColorTexName;
   std::string mOutputTexName;
+
+  // Frame buffers
+  Fbo::SharedPtr mpInternalFbo;
+
 
 // Various internal parameters
   uint32_t                                mFrameCount = 0x1337u;  ///< A frame counter to vary random numbers over time

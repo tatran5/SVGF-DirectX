@@ -68,6 +68,12 @@ bool SVGFPass::initialize(RenderContext* pRenderContext, ResourceManager::Shared
 	return true;
 }
 
+void SVGFPass::resize(uint32_t width, uint32_t height) {
+	// We need a framebuffer to attach to our graphics pipe state (when running our full-screen pass).  We can ask our
+	//    resource manager to create one for us, with specified width, height, and format and one color buffer.
+	mpInternalFbo = ResourceManager::createFbo(width, height, ResourceFormat::RGBA32Float);
+}
+
 void SVGFPass::execute(RenderContext* pRenderContext)
 {
 	// Grab the input textures
@@ -84,10 +90,11 @@ void SVGFPass::execute(RenderContext* pRenderContext)
 	shaderVars["gOutput"] = pOutputTex;
 
 	// Execute this shader
+	mpGfxState->setFbo(mpInternalFbo);
 	mpTemporalPlusVarianceShader->execute(pRenderContext, mpGfxState);
 
 	// We've accumulated our result.  Copy that back to the input/output buffer
-	pRenderContext->blit(pRawColorTex->getSRV(), pOutputTex->getRTV());
+	//pRenderContext->blit(mpInternalFbo->getColorTexture(0)->getSRV(), pOutputTex->getRTV());
 }
 
 

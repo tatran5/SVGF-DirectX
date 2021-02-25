@@ -20,12 +20,21 @@
 
 namespace {
 	const char* kAccumShader = "Tutorial11\\SVGFTemporalPlusVariance.ps.hlsl";
+	
+	// Input buffers
+	const char* kWorldPos = "WorldPosition";
+	const char* kWorldNorm = "WorldNormal";
 };
 
-SVGFPass::SVGFPass(const std::string& bufferToAccumulate)
+SVGFPass::SharedPtr SVGFPass::create(const std::string& outputTexName, const std::string& rawColorTexName) {
+	return SharedPtr(new SVGFPass(outputTexName, rawColorTexName));
+}
+
+SVGFPass::SVGFPass(const std::string& outputTexName, const std::string& rawColorTexName)
 	: ::RenderPass("Accumulation Pass", "Accumulation Options")
 {
-	mAccumChannel = bufferToAccumulate;
+	mOutputTexName = outputTexName;
+	mRawColorTexName = rawColorTexName;
 }
 
 bool SVGFPass::initialize(RenderContext* pRenderContext, ResourceManager::SharedPtr pResManager)
@@ -34,7 +43,14 @@ bool SVGFPass::initialize(RenderContext* pRenderContext, ResourceManager::Shared
 
 	// Stash our resource manager; ask for the texture the developer asked us to accumulate
 	mpResManager = pResManager;
-	mpResManager->requestTextureResource(mAccumChannel);
+	mpResManager->requestTextureResources({ 
+		// Field textures
+		mOutputTexName,
+		mRawColorTexName,
+		// Input buffer textures
+		kWorldPos,
+		kWorldNorm
+		});
 
 	// Create our graphics state and accumulation shader
 	mpGfxState = GraphicsState::create();
@@ -56,7 +72,7 @@ void SVGFPass::initScene(RenderContext* pRenderContext, Scene::SharedPtr pScene)
 
 	// Grab a copy of the current scene's camera matrix (if it exists)
 	if (mpScene && mpScene->getActiveCamera())
-		mpLastCameraMatrix = mpScene->getActiveCamera()->getViewMatrix();
+		mpPrevViewProjMatrix = mpScene->getActiveCamera()->getViewProjMatrix();
 }
 
 void SVGFPass::resize(uint32_t width, uint32_t height)
@@ -75,7 +91,7 @@ void SVGFPass::resize(uint32_t width, uint32_t height)
 void SVGFPass::renderGui(Gui* pGui)
 {
 	// Print the name of the buffer we're accumulating from and into.  Add a blank line below that for clarity
-	pGui->addText((std::string("Accumulating buffer:   ") + mAccumChannel).c_str());
+	pGui->addText((std::string("Accumulating buffer:   ") + mOutputTexName).c_str());
 	pGui->addText("");
 
 	// Add a toggle to enable/disable temporal accumulation.  Whenever this toggles, reset the
@@ -96,38 +112,40 @@ bool SVGFPass::hasCameraMoved()
 	// Has our camera moved?
 	return mpScene &&                      // No scene?  Then the answer is no
 		mpScene->getActiveCamera() &&   // No camera in our scene?  Then the answer is no
-		(mpLastCameraMatrix != mpScene->getActiveCamera()->getViewMatrix());   // Compare the current matrix with the last one
+		(mpPrevViewProjMatrix != mpScene->getActiveCamera()->getViewProjMatrix());   // Compare the current matrix with the last one
 }
 
 void SVGFPass::execute(RenderContext* pRenderContext)
 {
 	// Grab the texture to accumulate
-	Texture::SharedPtr inputTexture = mpResManager->getTexture(mAccumChannel);
+	Texture::SharedPtr pRawColorTex = mpResManager->getTexture(mRawColorTexName);
+	Texture::SharedPtr pWorldPosTex = mpResManager->getTexture(kWorldPos);
+	Texture::SharedPtr pWorldNormTex = mpResManager->getTexture(kWorldNorm);
+	
+	Texture::SharedPtr pOutputTex = mpResManager->getTexture(mOutputTexName);
 
-	// If our input texture is invalid, or we've been asked to skip accumulation, do nothing.
-	if (!inputTexture || !mDoAccumulation) return;
+
+	// If our output texture is invalid, or we've been asked to skip accumulation, do nothing.
+	if (!pOutputTex || !mDoAccumulation) return;
 
 	// If the camera in our current scene has moved, we want to reset accumulation
 	if (hasCameraMoved())
 	{
 		mAccumCount = 0;
-		mpLastCameraMatrix = mpScene->getActiveCamera()->getViewMatrix();
+		mpPrevViewProjMatrix = mpScene->getActiveCamera()->getViewProjMatrix();
 	}
 
 	// Set shader parameters for our accumulation
 	auto shaderVars = mpAccumShader->getVars();
-	shaderVars["PerFrameCB"]["gAccumCount"] = mAccumCount++;
-	shaderVars["gLastFrame"] = mpLastFrame;
-	shaderVars["gCurFrame"] = inputTexture;
+	shaderVars["gRawColorTex"] = pRawColorTex;
+	//shaderVars["gWolrdPosTex"] = pRawColorTex;
+	//shaderVars["gWorldNormTex"] = pRawColorTex;
 
 	// Do the accumulation
 	mpAccumShader->execute(pRenderContext, mpGfxState);
 
 	// We've accumulated our result.  Copy that back to the input/output buffer
-	pRenderContext->blit(mpInternalFbo->getColorTexture(0)->getSRV(), inputTexture->getRTV());
-
-	// Keep a copy for next frame (we need this to avoid reading & writing to the same resource)
-	pRenderContext->blit(mpInternalFbo->getColorTexture(0)->getSRV(), mpLastFrame->getRTV());
+	pRenderContext->blit(mpInternalFbo->getColorTexture(0)->getSRV(), pOutputTex->getRTV());
 }
 
 void SVGFPass::stateRefreshed()

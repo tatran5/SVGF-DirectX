@@ -17,10 +17,11 @@
 **********************************************************************************************************************/
 
 #include "Falcor.h"
-#include "../SharedUtils/RenderingPipeline.h"
 #include "../CommonPasses/LightProbeGBufferPass.h"
-#include "Passes/DiffuseOneShadowRayPass.h"
 #include "../CommonPasses/SimpleAccumulationPass.h"
+#include "../SharedUtils/RenderingPipeline.h"
+#include "Passes/DiffuseOneShadowRayPass.h"
+#include "Passes/SVGFPass.h"
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 {
@@ -29,12 +30,13 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
 	// Add passes into our pipeline
 	pipeline->setPass(0, LightProbeGBufferPass::create());
-	pipeline->setPass(1, DiffuseOneShadowRayPass::create(ResourceManager::kOutputChannel));    // Replace with our deferred shader that only shoots 1 random shadow ray
-	pipeline->setPass(2, SimpleAccumulationPass::create(ResourceManager::kOutputChannel));
+	pipeline->setPass(1, DiffuseOneShadowRayPass::create("RawColor"));    // Replace with our deferred shader that only shoots 1 random shadow ray
+	//pipeline->setPass(2, SimpleAccumulationPass::create( ResourceManager::kOutputChannel));
+	pipeline->setPass(2, SVGFPass::create(ResourceManager::kOutputChannel, "RawColor"));
 
 	// Define a set of config / window parameters for our program
 	SampleConfig config;
-	config.windowDesc.title = "Tutorial 11:  Instead of shooting one shadow ray per light, randomly shoot one shadow ray and accumulate over time.";
+	config.windowDesc.title = "SVGF";
 	config.windowDesc.resizableWindow = true;
 
 	// Start our program!

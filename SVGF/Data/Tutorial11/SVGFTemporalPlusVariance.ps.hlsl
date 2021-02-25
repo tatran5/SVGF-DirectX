@@ -21,14 +21,11 @@ cbuffer PerFrameCB
   uint gAccumCount;
 }
 
-Texture2D<float4>   gLastFrame;
-Texture2D<float4>   gCurFrame;
+Texture2D<float4>   gRawColorTex; 
 
 float4 main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
 {
-    uint2 pixelPos = (uint2)pos.xy;
-    float4 curColor = gCurFrame[pixelPos];
-    float4 prevColor = gLastFrame[pixelPos];
+  uint2 pixPos = (uint2)pos.xy;
 
-  return (gAccumCount * prevColor + curColor) / (gAccumCount + 1);
+  return gRawColorTex[pixPos];
 }

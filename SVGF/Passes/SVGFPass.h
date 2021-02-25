@@ -27,11 +27,11 @@ public:
 	using SharedPtr = std::shared_ptr<SVGFPass>;
 	using SharedConstPtr = std::shared_ptr<const SVGFPass>;
 
-	static SharedPtr create(const std::string& bufferToAccumulate) { return SharedPtr(new SVGFPass(bufferToAccumulate)); }
+	static SharedPtr create(const std::string& outputTexName, const std::string& rawColorTexName);
 	virtual ~SVGFPass() = default;
 
 protected:
-	SVGFPass(const std::string& bufferToAccumulate);
+	SVGFPass(const std::string& outputTexName, const std::string& rawColorTexName);
 
 	// Implementation of SimpleRenderPass interface
 	bool initialize(RenderContext* pRenderContext, ResourceManager::SharedPtr pResManager) override;
@@ -48,8 +48,10 @@ protected:
 	// A helper utility to determine if the current scene (if any) has had any camera motion
 	bool hasCameraMoved();
 
-	// Information about the rendering texture we're accumulating into
-	std::string                   mAccumChannel;
+	// Information about the rendering textures
+	std::string mRawColorTexName;
+	std::string mOutputTexName;
+
 
 	// State for our accumulation shader
 	FullscreenLaunch::SharedPtr   mpAccumShader;
@@ -59,7 +61,7 @@ protected:
 
 	// We stash a copy of our current scene.  Why?  To detect if changes have occurred.
 	Scene::SharedPtr              mpScene;
-	mat4                          mpLastCameraMatrix;
+	mat4                          mpPrevViewProjMatrix;
 
 	// Is our accumulation enabled?
 	bool                          mDoAccumulation = true;

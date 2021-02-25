@@ -41,7 +41,7 @@ bool DiffuseOneShadowRayPass::initialize(RenderContext* pRenderContext, Resource
 	mpResManager->requestTextureResource(kOutputTexName);
 
 	// Set the default scene to load
-	mpResManager->setDefaultSceneName("Data/pink_room/pink_room.fscene");
+	mpResManager->setDefaultSceneName("Data/pink_room/picapica.fscene");
 
 	// Create our wrapper around a ray tracing pass.  Tell it where our ray generation shader and ray-specific shaders are
 	mpRays = RayLaunch::create(kFileRayTrace, kEntryPointRayGen);

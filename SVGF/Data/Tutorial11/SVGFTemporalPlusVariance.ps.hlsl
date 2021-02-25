@@ -19,6 +19,7 @@
 cbuffer PerFrameCB
 {
 	float4x4 gPrevViewProjMat;
+	int2 texDim;
 }
 
 
@@ -56,29 +57,20 @@ float4 main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
 	
 	uint2 pixPos = (uint2)pos.xy;	
 	float4 worldPos = gWorldPos[pixPos];
+	float4 worldNorm = gWorldNorm[pixPos];
 
-	int2 texDim = getTextureDims(gRawColor, 0);
-
+	//int2 texDim = getTextureDims(gRawColor, 0);
 	// Find the position of previous pixel coordinate with the same world position
 	// https://docs.google.com/presentation/d/1YkDE7YAqoffC9wUmDxFo9WZjiLqWI5SlQRojOeCBPGs/edit#slide=id.g2492ec6f45_0_342
-	float4 prevViewSp = mul(gPrevViewProjMat, gWorldPos); // mul(x, y) = x * y where both are matrices
-	float4 prevScreenSp = prevViewSpace / prevViewSpace.w;
-	int2 prevPixPos = int2(
-		(prevScreenSp.x + 1.f) / 2.f * texDim.x,
-		(1.f - prevScreenSp.y) / 2.f * texDim.y);
+	//float4 prevViewSp = mul(gPrevViewProjMat, gWorldPos); // mul(x, y) = x * y where both are matrices
+	//float4 prevScreenSp = prevViewSpace / prevViewSpace.w;
+	//int2 prevPixPos = int2(
+	//	(prevScreenSp.x + 1.f) / 2.f * texDim.x,
+	//	(1.f - prevScreenSp.y) / 2.f * texDim.y);
 
-	bool backProjIsValid = isBackProjectValid(prevPixPos, texDim);
-	if (backProjIsValid) {
-		return gRawColor[pixelPos];
-	}
-
-	// gOutput[pixPos] = gRawColor[pixPos];
-
-	//   float4 curColor = gCurFrame[pixelPos];
-	//   float4 prevColor = gLastFrame[pixelPos];
-
-	 //return (gAccumCount * prevColor + curColor) / (gAccumCount + 1);
-	
-	return float4(0.f);
-
+	//bool backProjIsValid = isBackProjectValid(prevPixPos, texDim);
+	/*if (backProjIsValid) {
+	}*/
+	//gOutput[pixPos] = gRawColor[pixPos];
+	return float4(pixPos.x, pixPos.y, 0, 1.f);
 }

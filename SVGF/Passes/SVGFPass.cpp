@@ -52,15 +52,17 @@ bool SVGFPass::initialize(RenderContext* pRenderContext, ResourceManager::Shared
 	mpResManager = pResManager;
 
 	mpResManager->requestTextureResources({
+		// Field textures
+		mRawColorTexName,
+		mOutputTexName,
+		// Input buffer textures
 		kInputBufferWorldPosition,
-		kInputBufferWorldNormal
-	});
-
-	mpResManager->requestTextureResources({
+		kInputBufferWorldNormal,
+		// Internal buffer textures
 		kInternalBufferMoment,
 		kInternalBufferColor,
 		kInternalBufferHistoryLength
-	});
+		});
 
 	// Create our graphics state and an accumulation shader
 	mpGfxState = GraphicsState::create();
@@ -78,8 +80,8 @@ void SVGFPass::execute(RenderContext* pRenderContext)
 {
 	// Grab the input textures
 	Texture::SharedPtr pRawColorTex = mpResManager->getTexture(mRawColorTexName);
-	Texture::SharedPtr pWorldPositionTex = mpResManager->getTexture(kInputBufferWorldPosition);
-	Texture::SharedPtr pWorldNormalTex = mpResManager->getTexture(kInputBufferWorldNormal);
+	Texture::SharedPtr pWorldPosTex = mpResManager->getTexture(kInputBufferWorldPosition);
+	Texture::SharedPtr pWorldNormTex = mpResManager->getTexture(kInputBufferWorldNormal);
 
 	// Grab the output texture
 	Texture::SharedPtr pOutputTex = mpResManager->getTexture(mOutputTexName);
@@ -87,7 +89,11 @@ void SVGFPass::execute(RenderContext* pRenderContext)
 	// Set shader parameters for this pass
 	auto shaderVars = mpTemporalPlusVarianceShader->getVars();
 	shaderVars["gRawColor"] = pRawColorTex;
+	shaderVars["gWorldPos"] = pWorldPosTex;
+	shaderVars["gWorldNorm"] = pWorldNormTex;
 	shaderVars["gOutput"] = pOutputTex;
+
+	// Save the current camera view-projection matrix for next frame
 
 	// Execute this shader
 	mpGfxState->setFbo(mpInternalFbo);

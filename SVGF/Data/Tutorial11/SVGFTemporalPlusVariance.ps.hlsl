@@ -16,33 +16,25 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **********************************************************************************************************************/
 
-#include "Falcor.h"
-#include "../CommonPasses/LightProbeGBufferPass.h"
-#include "../CommonPasses/SimpleAccumulationPass.h"
-#include "../SharedUtils/RenderingPipeline.h"
-#include "Passes/DiffuseOneShadowRayPass.h"
-#include "Passes/SVGFPass.h"
-
-int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+cbuffer PerFrameCB
 {
-	// Create our rendering pipeline
-	RenderingPipeline *pipeline = new RenderingPipeline();
-	bool accumulatePass = false;
+   
+}
+
+Texture2D<float4>   gRawColor;
+Texture2D<float4>   gOutput;
+
+float4 main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
+{
+	uint2 pixelPos = (uint2)pos.xy;
+	//gOutput[pixelPos] = gRawColor[pixelPos];
 
 
-	// Add passes into our pipeline
-	pipeline->setPass(0, LightProbeGBufferPass::create());
-	pipeline->setPass(1, DiffuseOneShadowRayPass::create());    // Replace with our deferred shader that only shoots 1 random shadow ray
-	/*if (accumulatePass) {
-		pipeline->setPass(2, SimpleAccumulationPass::create(ResourceManager::kOutputChannel));
-	}*/
-	pipeline->setPass(2, SVGFPass::create(ResourceManager::kOutputChannel, "Raw Color"));
+	//   float4 curColor = gCurFrame[pixelPos];
+	//   float4 prevColor = gLastFrame[pixelPos];
 
-	// Define a set of config / window parameters for our program
-  SampleConfig config;
-	config.windowDesc.title = "SVGF (Based on 11)";
-	config.windowDesc.resizableWindow = true;
+	 //return (gAccumCount * prevColor + curColor) / (gAccumCount + 1);
+	
+	return gRawColor[pixelPos];
 
-	// Start our program!
-	RenderingPipeline::run(pipeline, config);
 }

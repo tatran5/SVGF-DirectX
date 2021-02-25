@@ -23,6 +23,9 @@ namespace {
 	// Where is our shader located?
 	const char* kFileRayTrace = "Tutorial11\\diffusePlus1Shadow.rt.hlsl";
 
+	// Output texture name
+	const char* kOutputTexName = "Raw Color";
+
 	// What are the entry points in that shader for various ray tracing shaders?
 	const char* kEntryPointRayGen  = "LambertShadowsRayGen";
 	const char* kEntryPointMiss0   = "ShadowMiss";
@@ -35,7 +38,7 @@ bool DiffuseOneShadowRayPass::initialize(RenderContext* pRenderContext, Resource
 	// Stash a copy of our resource manager so we can get rendering resources
 	mpResManager = pResManager;
 	mpResManager->requestTextureResources({ "WorldPosition", "WorldNormal", "MaterialDiffuse" });
-	mpResManager->requestTextureResource(ResourceManager::kOutputChannel);
+	mpResManager->requestTextureResource(kOutputTexName);
 
 	// Set the default scene to load
 	mpResManager->setDefaultSceneName("Data/pink_room/pink_room.fscene");
@@ -59,7 +62,8 @@ void DiffuseOneShadowRayPass::initScene(RenderContext* pRenderContext, Scene::Sh
 void DiffuseOneShadowRayPass::execute(RenderContext* pRenderContext)
 {
 	// Get the output buffer we're writing into; clear it to black.
-	Texture::SharedPtr pDstTex = mpResManager->getClearedTexture(ResourceManager::kOutputChannel, vec4(0.0f, 0.0f, 0.0f, 0.0f));
+	// Texture::SharedPtr pDstTex = mpResManager->getClearedTexture(ResourceManager::kOutputChannel, vec4(0.0f, 0.0f, 0.0f, 0.0f));
+	Texture::SharedPtr pDstTex = mpResManager->getClearedTexture(kOutputTexName, vec4(0.0f, 0.0f, 0.0f, 0.0f));
 
 	// Do we have all the resources we need to render?  If not, return
 	if (!pDstTex || !mpRays || !mpRays->readyToRender()) return;

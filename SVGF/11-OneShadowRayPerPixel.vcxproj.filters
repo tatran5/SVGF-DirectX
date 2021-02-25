@@ -45,6 +45,9 @@
     <ClInclude Include="..\SharedUtils\RenderPass.h">
       <Filter>SharedUtils</Filter>
     </ClInclude>
+    <ClInclude Include="Passes\SVGFPass.h">
+      <Filter>Passes</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\SharedUtils\RenderingPipeline.cpp">
@@ -77,6 +80,9 @@
     <ClCompile Include="..\SharedUtils\RenderPass.cpp">
       <Filter>SharedUtils</Filter>
     </ClCompile>
+    <ClCompile Include="Passes\SVGFPass.cpp">
+      <Filter>Passes</Filter>
+    </ClCompile>
     <ClCompile Include="SVGF.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -87,6 +93,9 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="Data\Tutorial11\diffusePlus1Shadow.rt.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Data\Tutorial11\SVGFTemporalPlusVariance.ps.hlsl">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

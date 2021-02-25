@@ -16,33 +16,41 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **********************************************************************************************************************/
 
-#include "Falcor.h"
-#include "../CommonPasses/LightProbeGBufferPass.h"
-#include "../CommonPasses/SimpleAccumulationPass.h"
-#include "../SharedUtils/RenderingPipeline.h"
-#include "Passes/DiffuseOneShadowRayPass.h"
-#include "Passes/SVGFPass.h"
+#pragma once
 
-int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+#include "../SharedUtils/FullscreenLaunch.h"
+#include "../SharedUtils/RenderPass.h"
+#include "../SharedUtils/RayLaunch.h"
+
+class SVGFPass : public ::RenderPass, inherit_shared_from_this<::RenderPass, SVGFPass>
 {
-	// Create our rendering pipeline
-	RenderingPipeline *pipeline = new RenderingPipeline();
-	bool accumulatePass = false;
+public:
+  using SharedPtr = std::shared_ptr<SVGFPass>;
+  using SharedConstPtr = std::shared_ptr<const SVGFPass>;
+
+  static SharedPtr create(const std::string& outputTexName, const std::string& rawColorTexName);
+  virtual ~SVGFPass() = default;
+
+protected:
+  SVGFPass(const std::string& outputTexName, const std::string& rawColorTexName);
+
+  // Implementation of RenderPass interface
+  bool initialize(RenderContext* pRenderContext, ResourceManager::SharedPtr pResManager) override;
+  void execute(RenderContext* pRenderContext) override;
+
+  // Rendering state
+  RayLaunch::SharedPtr                    mpRays;                 ///< Our wrapper around a DX Raytracing pass
+  RtScene::SharedPtr                      mpScene;                ///< Our scene file (passed in from app)  
+
+  // State for our shaders
+  GraphicsState::SharedPtr      mpGfxState;
+  FullscreenLaunch::SharedPtr   mpTemporalPlusVarianceShader;
 
 
-	// Add passes into our pipeline
-	pipeline->setPass(0, LightProbeGBufferPass::create());
-	pipeline->setPass(1, DiffuseOneShadowRayPass::create());    // Replace with our deferred shader that only shoots 1 random shadow ray
-	/*if (accumulatePass) {
-		pipeline->setPass(2, SimpleAccumulationPass::create(ResourceManager::kOutputChannel));
-	}*/
-	pipeline->setPass(2, SVGFPass::create(ResourceManager::kOutputChannel, "Raw Color"));
+  // Texture related
+  std::string mRawColorTexName;
+  std::string mOutputTexName;
 
-	// Define a set of config / window parameters for our program
-  SampleConfig config;
-	config.windowDesc.title = "SVGF (Based on 11)";
-	config.windowDesc.resizableWindow = true;
-
-	// Start our program!
-	RenderingPipeline::run(pipeline, config);
-}
+// Various internal parameters
+  uint32_t                                mFrameCount = 0x1337u;  ///< A frame counter to vary random numbers over time
+};

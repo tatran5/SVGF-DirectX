@@ -33,28 +33,31 @@
 class DiffuseOneShadowRayPass : public ::RenderPass, inherit_shared_from_this<::RenderPass, DiffuseOneShadowRayPass>
 {
 public:
-    using SharedPtr = std::shared_ptr<DiffuseOneShadowRayPass>;
-    using SharedConstPtr = std::shared_ptr<const DiffuseOneShadowRayPass>;
+  using SharedPtr = std::shared_ptr<DiffuseOneShadowRayPass>;
+  using SharedConstPtr = std::shared_ptr<const DiffuseOneShadowRayPass>;
 
-    static SharedPtr create() { return SharedPtr(new DiffuseOneShadowRayPass()); }
-    virtual ~DiffuseOneShadowRayPass() = default;
+  static SharedPtr create(const std::string& outputTexName);
+  virtual ~DiffuseOneShadowRayPass() = default;
 
 protected:
-	DiffuseOneShadowRayPass() : ::RenderPass("Diffuse + 1 Rand Shadow Ray", "Diffuse + 1 Random Shadow  Options") {}
+  DiffuseOneShadowRayPass(const std::string& outputTexName);
 
-    // Implementation of RenderPass interface
-    bool initialize(RenderContext* pRenderContext, ResourceManager::SharedPtr pResManager) override;
-    void initScene(RenderContext* pRenderContext, Scene::SharedPtr pScene) override;
-    void execute(RenderContext* pRenderContext) override;
+  // Implementation of RenderPass interface
+  bool initialize(RenderContext* pRenderContext, ResourceManager::SharedPtr pResManager) override;
+  void initScene(RenderContext* pRenderContext, Scene::SharedPtr pScene) override;
+  void execute(RenderContext* pRenderContext) override;
 
-	// Override some functions that provide information to the RenderPipeline class
-	bool requiresScene() override { return true; }
-	bool usesRayTracing() override { return true; }
+  // Override some functions that provide information to the RenderPipeline class
+  bool requiresScene() override { return true; }
+  bool usesRayTracing() override { return true; }
 
-    // Rendering state
-	RayLaunch::SharedPtr                    mpRays;                 ///< Our wrapper around a DX Raytracing pass
-    RtScene::SharedPtr                      mpScene;                ///< Our scene file (passed in from app)  
-    
-	// Various internal parameters
-	uint32_t                                mFrameCount = 0x1337u;  ///< A frame counter to vary random numbers over time
+  // Rendering state
+  RayLaunch::SharedPtr                    mpRays;                 ///< Our wrapper around a DX Raytracing pass
+  RtScene::SharedPtr                      mpScene;                ///< Our scene file (passed in from app)  
+
+  // Texture fields
+  std::string mOutputTexName;
+
+// Various internal parameters
+  uint32_t                                mFrameCount = 0x1337u;  ///< A frame counter to vary random numbers over time
 };

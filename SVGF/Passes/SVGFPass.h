@@ -17,44 +17,53 @@
 **********************************************************************************************************************/
 
 #pragma once
-
-#include "../SharedUtils/FullscreenLaunch.h"
 #include "../SharedUtils/RenderPass.h"
-#include "../SharedUtils/RayLaunch.h"
+#include "../SharedUtils/SimpleVars.h"
+#include "../SharedUtils/FullscreenLaunch.h"
 
 class SVGFPass : public ::RenderPass, inherit_shared_from_this<::RenderPass, SVGFPass>
 {
 public:
-  using SharedPtr = std::shared_ptr<SVGFPass>;
-  using SharedConstPtr = std::shared_ptr<const SVGFPass>;
+	using SharedPtr = std::shared_ptr<SVGFPass>;
+	using SharedConstPtr = std::shared_ptr<const SVGFPass>;
 
-  static SharedPtr create(const std::string& outputTexName, const std::string& rawColorTexName);
-  virtual ~SVGFPass() = default;
+	static SharedPtr create(const std::string& bufferToAccumulate) { return SharedPtr(new SVGFPass(bufferToAccumulate)); }
+	virtual ~SVGFPass() = default;
 
 protected:
-  SVGFPass(const std::string& outputTexName, const std::string& rawColorTexName);
+	SVGFPass(const std::string& bufferToAccumulate);
 
-  // Implementation of RenderPass interface
-  bool initialize(RenderContext* pRenderContext, ResourceManager::SharedPtr pResManager) override;
-  void execute(RenderContext* pRenderContext) override;
-  void resize(uint32_t width, uint32_t height) override;
+	// Implementation of SimpleRenderPass interface
+	bool initialize(RenderContext* pRenderContext, ResourceManager::SharedPtr pResManager) override;
+	void initScene(RenderContext* pRenderContext, Scene::SharedPtr pScene) override;
+	void execute(RenderContext* pRenderContext) override;
+	void renderGui(Gui* pGui) override;
+	void resize(uint32_t width, uint32_t height) override;
+	void stateRefreshed() override;
 
-  // Rendering state
-  RayLaunch::SharedPtr                    mpRays;                 ///< Our wrapper around a DX Raytracing pass
-  RtScene::SharedPtr                      mpScene;                ///< Our scene file (passed in from app)  
+	// Override some functions that provide information to the RenderPipeline class
+	bool appliesPostprocess() override { return true; }
+	bool hasAnimation() override { return false; }
 
-  // State for our shaders
-  GraphicsState::SharedPtr      mpGfxState;
-  FullscreenLaunch::SharedPtr   mpTemporalPlusVarianceShader;
+	// A helper utility to determine if the current scene (if any) has had any camera motion
+	bool hasCameraMoved();
 
-  // Texture related
-  std::string mRawColorTexName;
-  std::string mOutputTexName;
+	// Information about the rendering texture we're accumulating into
+	std::string                   mAccumChannel;
 
-  // Frame buffers
-  Fbo::SharedPtr mpInternalFbo;
+	// State for our accumulation shader
+	FullscreenLaunch::SharedPtr   mpAccumShader;
+	GraphicsState::SharedPtr      mpGfxState;
+	Texture::SharedPtr            mpLastFrame;
+	Fbo::SharedPtr                mpInternalFbo;
 
+	// We stash a copy of our current scene.  Why?  To detect if changes have occurred.
+	Scene::SharedPtr              mpScene;
+	mat4                          mpLastCameraMatrix;
 
-// Various internal parameters
-  uint32_t                                mFrameCount = 0x1337u;  ///< A frame counter to vary random numbers over time
+	// Is our accumulation enabled?
+	bool                          mDoAccumulation = true;
+
+	// How many frames have we accumulated so far?
+	uint32_t                      mAccumCount = 0;
 };

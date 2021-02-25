@@ -24,21 +24,21 @@
 class SimpleAccumulationPass : public ::RenderPass, inherit_shared_from_this<::RenderPass, SimpleAccumulationPass>
 {
 public:
-    using SharedPtr = std::shared_ptr<SimpleAccumulationPass>;
-    using SharedConstPtr = std::shared_ptr<const SimpleAccumulationPass>;
+	using SharedPtr = std::shared_ptr<SimpleAccumulationPass>;
+	using SharedConstPtr = std::shared_ptr<const SimpleAccumulationPass>;
 
-    static SharedPtr create(const std::string &bufferToAccumulate) { return SharedPtr(new SimpleAccumulationPass(bufferToAccumulate)); }
-    virtual ~SimpleAccumulationPass() = default;
+	static SharedPtr create(const std::string& bufferToAccumulate) { return SharedPtr(new SimpleAccumulationPass(bufferToAccumulate)); }
+	virtual ~SimpleAccumulationPass() = default;
 
 protected:
-	SimpleAccumulationPass(const std::string &bufferToAccumulate);
+	SimpleAccumulationPass(const std::string& bufferToAccumulate);
 
-    // Implementation of SimpleRenderPass interface
+	// Implementation of SimpleRenderPass interface
 	bool initialize(RenderContext* pRenderContext, ResourceManager::SharedPtr pResManager) override;
 	void initScene(RenderContext* pRenderContext, Scene::SharedPtr pScene) override;
-    void execute(RenderContext* pRenderContext) override;
-    void renderGui(Gui* pGui) override;
-    void resize(uint32_t width, uint32_t height) override;
+	void execute(RenderContext* pRenderContext) override;
+	void renderGui(Gui* pGui) override;
+	void resize(uint32_t width, uint32_t height) override;
 	void stateRefreshed() override;
 
 	// Override some functions that provide information to the RenderPipeline class
@@ -48,7 +48,7 @@ protected:
 	// A helper utility to determine if the current scene (if any) has had any camera motion
 	bool hasCameraMoved();
 
-    // Information about the rendering texture we're accumulating into
+	// Information about the rendering texture we're accumulating into
 	std::string                   mAccumChannel;
 
 	// State for our accumulation shader

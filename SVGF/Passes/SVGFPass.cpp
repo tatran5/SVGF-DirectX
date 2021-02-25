@@ -138,6 +138,9 @@ void SVGFPass::execute(RenderContext* pRenderContext)
 	// Set shader parameters for our accumulation
 	auto shaderVars = mpAccumShader->getVars();
 	shaderVars["gRawColorTex"] = pRawColorTex;
+	shaderVars["gWorldPosTex"] = pWorldPosTex;
+	shaderVars["gWorldNormTex"] = pWorldNormTex;
+	
 	//shaderVars["gWolrdPosTex"] = pRawColorTex;
 	//shaderVars["gWorldNormTex"] = pRawColorTex;
 

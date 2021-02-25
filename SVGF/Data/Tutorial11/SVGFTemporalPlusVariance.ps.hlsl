@@ -22,10 +22,12 @@ cbuffer PerFrameCB
 }
 
 Texture2D<float4>   gRawColorTex; 
+Texture2D<float4>   gWorldPosTex;
+Texture2D<float4>   gWorldNormTex;
 
 float4 main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
 {
   uint2 pixPos = (uint2)pos.xy;
 
-  return gRawColorTex[pixPos];
+  return gWorldNormTex[pixPos];
 }

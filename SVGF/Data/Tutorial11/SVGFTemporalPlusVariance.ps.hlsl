@@ -99,17 +99,27 @@ void tapFilter2x2(float2 prevPixPos, out uint consistentSampleCount, out float4 
 // For all of the valid previous neighbor samples (including the previous pixel),
 // To find the corresponding value, add up the value contribution from those samples
 // and redistribute the value uniformly by dividing the number of samples contributing
-void tapFilter3x3(float2 prevPixPos, out uint consistentSampleCount, out float prevLuminance, out float prevMoment) {
+void tapFilter3x3(float2 prevPixPos, out uint consistentSampleCount, out float4 prevIntegratedColor, out float2 prevMoment) {
   // Set everything to 0 just in case
   consistentSampleCount = 0;
   prevIntegratedColor = float4(0.f);
   prevMoment = float2(0.f);
 
-  float weightSum = 0.f;
   for (int x = -1; x <= 1; x++) {
-    for (int y = -1; y <=1; y++)
+    for (int y = -1; y <= 1; y++) {
+      int2 prevSamplePixPos = int2(prevPixPos) + int2(x, y);
+      if (isBackProjectionValid(prevSamplePixPos)) {
+        prevIntegratedColor += gPrevIntegratedColorTex[prevSamplePixPos];
+        prevMoment += gPrevMoments[sampleIdx];
+        consistentSampleCount ++;
+      }
+    }
   }
  
+  if (consistentSampleCount > 0) {
+    prevIntegratedColor /= consistentSampleCount;
+    prevMoment /= consistentSampleCount;
+  }
 }
 
 
@@ -129,14 +139,12 @@ float4 main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
 
   // Perform filter. If 2x2 fails, then try 3x3
   int consistentSamplesCount = 0;
-  float prevLuminance = 0.f;
+  float prevIntegratedColor = 0.f;
   float prevMoment = 0.f;
 
-  tapFilter2x2(prevPixPos, consistentSampleCount, prevLuminance, prevMoment);s
-
-  if (consistentSamplesCount == 0) {
-    tapFilter3x3(prevPixPos, consistentSampleCount, prevLuminance, prevMoment);
-  }
+  // Apply tap linear to get the weighted integrated color and  moment from previous frames
+  tapFilter2x2(prevPixPos, consistentSampleCount, prevIntegratedColor, prevMoment);
+  if (consistentSamplesCount == 0) tapFilter3x3(prevPixPos, consistentSampleCount, prevLuminance, prevMoment);
 
   return gRawColorTex[pixPos];
 }

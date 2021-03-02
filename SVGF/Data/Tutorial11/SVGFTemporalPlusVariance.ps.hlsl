@@ -25,12 +25,15 @@ cbuffer PerFrameCB
   uint2 gTexDim;
 }
 
+// Input buffers
 Texture2D<float4>   gRawColorTex; 
 Texture2D<float4>   gWorldPosTex;
 Texture2D<float4>   gWorldNormTex;
 
+// Internal buffers
 Texture2D<float4>   gPrevIntegratedColorTex;
-Texture2D<float4>   gPrevMoment;
+Texture2D<float2>   gPrevMoment;
+Texture2D<float>    gPrevHistoryLength;
 
 
 bool isBackProjectionValid(int2 prevPixPos) {
@@ -42,7 +45,6 @@ bool isBackProjectionValid(int2 prevPixPos) {
 
   return true;
 }
-
 
 // 2x2 bilinear tap filter (bilinear interpolation)
 // For all of the valid previous neighbor samples (including the previous pixel),
@@ -62,14 +64,14 @@ void tapFilter2x2(float2 prevPixPos, out uint consistentSampleCount, out float4 
     int2 prevSamplePixPos = int2(prevPixPos) + sampleOffsets[sampleIdx];
     if (isBackProjectionValid(prevSamplePixPos)) {
       sampleIsConsistent[sampleIdx] = true;
-      consistentSamplesCount++;
+      consistentSampleCount++;
     }
   }
 
-  if (consistentSamplesCount > 0) {
+  if (consistentSampleCount > 0) {
     // perform bilinear interpolation
     float2 prevPixPosFrac = frac(prevPixPos.xy);
-    float weightSum = 0.f
+    float weightSum = 0.f;
     float sampleWeights[4] = {
       (1 - prevPixPosFrac.x) * (1 - prevPixPosFrac.y), // (0, 0)
            prevPixPosFrac.x  * (1 - prevPixPosFrac.y), // (1, 0)
@@ -81,7 +83,7 @@ void tapFilter2x2(float2 prevPixPos, out uint consistentSampleCount, out float4 
       int2 prevSamplePixPos = int2(prevPixPos) + sampleOffsets[sampleIdx];
       if (sampleIsConsistent[sampleIdx]) {
         prevIntegratedColor += sampleWeights[sampleIdx] * gPrevIntegratedColorTex[prevSamplePixPos];
-        prevMoment += sampleWeights[sampleIdx] * gPrevMoments[sampleIdx];
+        prevMoment += sampleWeights[sampleIdx] * gPrevMoment[sampleIdx];
         weightSum += sampleWeights[sampleIdx];
       }
     }
@@ -93,7 +95,6 @@ void tapFilter2x2(float2 prevPixPos, out uint consistentSampleCount, out float4 
     }
   }
 }
-
 
 // 3x3 uniform tap filter (bilinear interpolation)
 // For all of the valid previous neighbor samples (including the previous pixel),
@@ -110,7 +111,7 @@ void tapFilter3x3(float2 prevPixPos, out uint consistentSampleCount, out float4 
       int2 prevSamplePixPos = int2(prevPixPos) + int2(x, y);
       if (isBackProjectionValid(prevSamplePixPos)) {
         prevIntegratedColor += gPrevIntegratedColorTex[prevSamplePixPos];
-        prevMoment += gPrevMoments[sampleIdx];
+        prevMoment += gPrevMoment[prevSamplePixPos];
         consistentSampleCount ++;
       }
     }
@@ -122,11 +123,34 @@ void tapFilter3x3(float2 prevPixPos, out uint consistentSampleCount, out float4 
   }
 }
 
+float getLuminance(float3 color) {
+  return 0.2126f * color.r + 0.7152f * color.g + 0.0722f * color.b;
+}
 
-float4 main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
+struct GBuffer
+{
+  // SV_TargetX means the textured is stored in the xth position in our FBO
+  // This should corresponds to the FBO setup in the .cpp file, and the FBO
+  // set as output of this shader by using setFbo function
+  float4 integratedColor  : SV_Target0; 
+  float2 moment           : SV_Target1;
+  float  historyLength    : SV_Target2;
+  float  variance         : SV_Target3;
+};
+
+
+GBuffer main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
 {
   uint2 pixPos = (uint2)pos.xy;
+  float4 rawColor = gRawColor[pixPos];
   float4 worldPos = gWorldPosTex[pixPos];
+
+  float alpha = 0.2f;
+  float4 integratedColor = float4(0.f);
+
+  // ----------------------------------------------------------------------------
+  // TEMPORAL FILTERING 
+  // ----------------------------------------------------------------------------
 
   // Compute previous pixel position using the current world position
   // https://docs.google.com/presentation/d/1YkDE7YAqoffC9wUmDxFo9WZjiLqWI5SlQRojOeCBPGs/edit#slide=id.g2492ec6f45_0_342
@@ -138,13 +162,27 @@ float4 main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
     );
 
   // Perform filter. If 2x2 fails, then try 3x3
-  int consistentSamplesCount = 0;
-  float prevIntegratedColor = 0.f;
-  float prevMoment = 0.f;
+  uint consistentSampleCount = 0;
+  float4 prevIntegratedColor = 0.f;
+  float2 prevMoment = 0.f;
 
   // Apply tap linear to get the weighted integrated color and  moment from previous frames
   tapFilter2x2(prevPixPos, consistentSampleCount, prevIntegratedColor, prevMoment);
-  if (consistentSamplesCount == 0) tapFilter3x3(prevPixPos, consistentSampleCount, prevLuminance, prevMoment);
+  if (consistentSampleCount == 0) tapFilter3x3(prevPixPos, consistentSampleCount, prevIntegratedColor, prevMoment);
+  
+  integratedColor = consistentSampleCount == 0 ? rawColor : alpha * rawColor + (1 - alpha) * prevIntegratedColor;
 
-  return gRawColorTex[pixPos];
+  // ----------------------------------------------------------------------------
+  // VARIANCE ESTIMATION
+  // ----------------------------------------------------------------------------
+  
+  // bogus values jsut for testing
+  // Dump out our G buffer channels
+  GBuffer gBufOut;
+  gBufOut.integratedColor = float4(1.f, 0.f, 1.f, 1.f);
+  gBufOut.moment = float2(0.f, 0.f);
+  gBufOut.historyLength = float(1.f);
+  gBufOut.variance = float(1.f);
+
+  return gBufOut;
 }

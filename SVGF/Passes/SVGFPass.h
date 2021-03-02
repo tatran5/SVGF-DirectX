@@ -36,7 +36,13 @@ protected:
 	// Implementation of SimpleRenderPass interface
 	bool initialize(RenderContext* pRenderContext, ResourceManager::SharedPtr pResManager) override;
 	void initScene(RenderContext* pRenderContext, Scene::SharedPtr pScene) override;
+	void initFBO();
 	void execute(RenderContext* pRenderContext) override;
+	void executeTemporalPlusVariance(
+		RenderContext* pRenderContext, 
+		Texture::SharedPtr pRawColorTex,
+		Texture::SharedPtr pWorldPosTex,
+		Texture::SharedPtr pWorldNormTex);
 	void renderGui(Gui* pGui) override;
 	void resize(uint32_t width, uint32_t height) override;
 	void stateRefreshed() override;
@@ -54,10 +60,16 @@ protected:
 	uint2				mTexDim;
 
 	// State for our accumulation shader
-	FullscreenLaunch::SharedPtr   mpAccumShader;
+	FullscreenLaunch::SharedPtr   mpTemporalPlusVarianceShader;
 	GraphicsState::SharedPtr      mpGfxState;
 	Texture::SharedPtr            mpLastFrame;
 	Fbo::SharedPtr                mpInternalFbo;
+	
+	// Internal FBOs
+
+	// Fbos for temporal plus variance (TPV) shader; has textures: prevIntegratedColor, moment, variance
+	Fbo::SharedPtr								mpTPVFbo; 
+	Fbo::SharedPtr								mpPrevTPVFbo;
 
 	// We stash a copy of our current scene.  Why?  To detect if changes have occurred.
 	Scene::SharedPtr              mpScene;

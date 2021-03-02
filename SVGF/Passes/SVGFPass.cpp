@@ -19,11 +19,22 @@
 #include "SVGFPass.h"
 
 namespace {
-	const char* kAccumShader = "Tutorial11\\SVGFTemporalPlusVariance.ps.hlsl";
+	const char* kTemporalPlusVarianceShader = "Tutorial11\\SVGFTemporalPlusVariance.ps.hlsl";
 	
-	// Input buffers
+	// Names of input buffers
 	const char* kWorldPos = "WorldPosition";
 	const char* kWorldNorm = "WorldNormal";
+
+	// Names of internal buffers
+	const char* kInternalPrevIntegratedColor = "PrevIntegratedColor";
+	const char* kInternalPrevMoment = "PrevMoment";
+};
+
+enum TPVTextureLocation {
+	IntegratedColor = 0,
+	Moment = 1,
+	HistoryLength = 2,
+	Variance = 3
 };
 
 SVGFPass::SharedPtr SVGFPass::create(const std::string& outputTexName, const std::string& rawColorTexName) {
@@ -31,7 +42,7 @@ SVGFPass::SharedPtr SVGFPass::create(const std::string& outputTexName, const std
 }
 
 SVGFPass::SVGFPass(const std::string& outputTexName, const std::string& rawColorTexName)
-	: ::RenderPass("Accumulation Pass", "Accumulation Options")
+	: ::RenderPass("SVGF Pass", "SVGF Options")
 {
 	mOutputTexName = outputTexName;
 	mRawColorTexName = rawColorTexName;
@@ -49,18 +60,20 @@ bool SVGFPass::initialize(RenderContext* pRenderContext, ResourceManager::Shared
 		mRawColorTexName,
 		// Input buffer textures
 		kWorldPos,
-		kWorldNorm
+		kWorldNorm,
+		// Internal buffer textures
+		kInternalPrevIntegratedColor,
+		kInternalPrevMoment
 		});
 
 	// Create our graphics state and accumulation shader
 	mpGfxState = GraphicsState::create();
-	mpAccumShader = FullscreenLaunch::create(kAccumShader);
-
-	// Our GUI needs less space than other passes, so shrink the GUI window.
-	setGuiSize(ivec2(250, 135));
+	mpTemporalPlusVarianceShader = FullscreenLaunch::create(kTemporalPlusVarianceShader);
 
 	return true;
 }
+
+
 
 void SVGFPass::initScene(RenderContext* pRenderContext, Scene::SharedPtr pScene)
 {
@@ -73,6 +86,20 @@ void SVGFPass::initScene(RenderContext* pRenderContext, Scene::SharedPtr pScene)
 	// Grab a copy of the current scene's camera matrix (if it exists)
 	if (mpScene && mpScene->getActiveCamera())
 		mpPrevViewProjMatrix = mpScene->getActiveCamera()->getViewProjMatrix();
+
+	initFBO();
+}
+
+void SVGFPass::initFBO() {
+	// Mimicking ResourceManager::createFbo
+	Fbo::Desc TPVFboDesc;
+	TPVFboDesc.setColorTarget(TPVTextureLocation::IntegratedColor, ResourceFormat::RGBA32Float);
+	TPVFboDesc.setColorTarget(TPVTextureLocation::Moment, ResourceFormat::RG32Float);
+	TPVFboDesc.setColorTarget(TPVTextureLocation::HistoryLength, ResourceFormat::R32Float);
+	TPVFboDesc.setColorTarget(TPVTextureLocation::Variance, ResourceFormat::R32Float);
+
+	mpPrevTPVFbo = FboHelper::create2D(mTexDim.x, mTexDim.y, TPVFboDesc);
+	mpTPVFbo = FboHelper::create2D(mTexDim.x, mTexDim.y, TPVFboDesc);
 }
 
 void SVGFPass::resize(uint32_t width, uint32_t height)
@@ -111,34 +138,48 @@ void SVGFPass::renderGui(Gui* pGui)
 
 void SVGFPass::execute(RenderContext* pRenderContext)
 {
-	// Grab the texture to accumulate
+	// Input textures
 	Texture::SharedPtr pRawColorTex = mpResManager->getTexture(mRawColorTexName);
 	Texture::SharedPtr pWorldPosTex = mpResManager->getTexture(kWorldPos);
 	Texture::SharedPtr pWorldNormTex = mpResManager->getTexture(kWorldNorm);
-	
 	Texture::SharedPtr pOutputTex = mpResManager->getTexture(mOutputTexName);
 
+	executeTemporalPlusVariance(pRenderContext, pRawColorTex, pWorldPosTex, pWorldNormTex);
 
-	// If our output texture is invalid, or we've been asked to skip accumulation, do nothing.
-	if (!pOutputTex || !mDoAccumulation) return;
+	// We've accumulated our result.  Copy that back to the input/output buffer
+	// TEST ONLY
+	pRenderContext->blit(mpTPVFbo->getColorTexture(TPVTextureLocation::IntegratedColor)->getSRV(), pOutputTex->getRTV());
+
+	// Update fields to be used in next iteration
+	std::swap(mpPrevTPVFbo, mpTPVFbo);
+	mpPrevViewProjMatrix = mpScene->getActiveCamera()->getViewProjMatrix();
+	
+}
+
+void SVGFPass::executeTemporalPlusVariance(RenderContext* pRenderContext,
+	Texture::SharedPtr pRawColorTex, Texture::SharedPtr pWorldPosTex,	Texture::SharedPtr pWorldNormTex) 
+{
+	// Internal textures
+	Texture::SharedPtr pPrevIntegratedColor = mpPrevTPVFbo->getColorTexture(TPVTextureLocation::IntegratedColor);
+	Texture::SharedPtr pPrevMoment = mpPrevTPVFbo->getColorTexture(TPVTextureLocation::Moment);
+	Texture::SharedPtr pPrevHistoryLength = mpPrevTPVFbo->getColorTexture(TPVTextureLocation::HistoryLength);
 
 	// Set shader parameters for our accumulation
-	auto shaderVars = mpAccumShader->getVars();
+	auto shaderVars = mpTemporalPlusVarianceShader->getVars();
+	
 	shaderVars["PerFrameCB"]["gPrevViewProjMatrix"] = mpPrevViewProjMatrix;
 	shaderVars["PerFrameCB"]["gTexDim"] = mTexDim;
+
 	shaderVars["gRawColorTex"] = pRawColorTex;
 	shaderVars["gWorldPosTex"] = pWorldPosTex;
 	shaderVars["gWorldNormTex"] = pWorldNormTex;
 
-	// Do the accumulation
-	mpAccumShader->execute(pRenderContext, mpGfxState);
+	shaderVars["gPrevIntegratedColorTex"] = pPrevIntegratedColor;
+	shaderVars["gPrevMoment"] = pPrevMoment;
+	shaderVars["gPrevHistoryLength"] = pPrevHistoryLength;
 
-
-	// We've accumulated our result.  Copy that back to the input/output buffer
-	pRenderContext->blit(mpInternalFbo->getColorTexture(0)->getSRV(), pOutputTex->getRTV());
-
-	// Update fields to be used in next iteration
-	mpPrevViewProjMatrix = mpScene->getActiveCamera()->getViewProjMatrix();
+	mpGfxState->setFbo(mpTPVFbo);
+	mpTemporalPlusVarianceShader->execute(pRenderContext, mpGfxState);
 }
 
 void SVGFPass::stateRefreshed()

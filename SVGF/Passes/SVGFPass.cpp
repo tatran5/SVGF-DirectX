@@ -32,9 +32,9 @@ namespace {
 
 enum TPVTextureLocation {
 	IntegratedColor = 0,
-	Moment = 1,
-	HistoryLength = 2,
-	Variance = 3
+	Moments				  = 1,
+	HistoryLength		= 2,
+	Variance				= 3
 };
 
 SVGFPass::SharedPtr SVGFPass::create(const std::string& outputTexName, const std::string& rawColorTexName) {
@@ -94,7 +94,7 @@ void SVGFPass::initFBO() {
 	// Mimicking ResourceManager::createFbo
 	Fbo::Desc TPVFboDesc;
 	TPVFboDesc.setColorTarget(TPVTextureLocation::IntegratedColor, ResourceFormat::RGBA32Float);
-	TPVFboDesc.setColorTarget(TPVTextureLocation::Moment, ResourceFormat::RG32Float);
+	TPVFboDesc.setColorTarget(TPVTextureLocation::Moments, ResourceFormat::RG32Float);
 	TPVFboDesc.setColorTarget(TPVTextureLocation::HistoryLength, ResourceFormat::R32Float);
 	TPVFboDesc.setColorTarget(TPVTextureLocation::Variance, ResourceFormat::R32Float);
 
@@ -161,21 +161,23 @@ void SVGFPass::executeTemporalPlusVariance(RenderContext* pRenderContext,
 {
 	// Internal textures
 	Texture::SharedPtr pPrevIntegratedColor = mpPrevTPVFbo->getColorTexture(TPVTextureLocation::IntegratedColor);
-	Texture::SharedPtr pPrevMoment = mpPrevTPVFbo->getColorTexture(TPVTextureLocation::Moment);
-	Texture::SharedPtr pPrevHistoryLength = mpPrevTPVFbo->getColorTexture(TPVTextureLocation::HistoryLength);
+	Texture::SharedPtr pPrevMoment					= mpPrevTPVFbo->getColorTexture(TPVTextureLocation::Moments);
+	Texture::SharedPtr pPrevHistoryLength   = mpPrevTPVFbo->getColorTexture(TPVTextureLocation::HistoryLength);
 
 	// Set shader parameters for our accumulation
 	auto shaderVars = mpTemporalPlusVarianceShader->getVars();
 	
 	shaderVars["PerFrameCB"]["gPrevViewProjMatrix"] = mpPrevViewProjMatrix;
-	shaderVars["PerFrameCB"]["gTexDim"] = mTexDim;
+	shaderVars["PerFrameCB"]["gTexDim"]							= mTexDim;
+	shaderVars["PerFrameCB"]["gAlpha"]							= 0.2f;
+	shaderVars["PerFrameCB"]["gAlphaMoments"]				= 0.2f;
 
-	shaderVars["gRawColorTex"] = pRawColorTex;
-	shaderVars["gWorldPosTex"] = pWorldPosTex;
+	shaderVars["gRawColorTex"]  = pRawColorTex;
+	shaderVars["gWorldPosTex"]  = pWorldPosTex;
 	shaderVars["gWorldNormTex"] = pWorldNormTex;
 
 	shaderVars["gPrevIntegratedColorTex"] = pPrevIntegratedColor;
-	shaderVars["gPrevMoment"] = pPrevMoment;
+	shaderVars["gPrevMoments"] = pPrevMoment;
 	shaderVars["gPrevHistoryLength"] = pPrevHistoryLength;
 
 	mpGfxState->setFbo(mpTPVFbo);

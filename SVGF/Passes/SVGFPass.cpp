@@ -153,7 +153,6 @@ void SVGFPass::execute(RenderContext* pRenderContext)
 	// Update fields to be used in next iteration
 	std::swap(mpPrevTPVFbo, mpTPVFbo);
 	mpPrevViewProjMatrix = mpScene->getActiveCamera()->getViewProjMatrix();
-	
 }
 
 void SVGFPass::executeTemporalPlusVariance(RenderContext* pRenderContext,

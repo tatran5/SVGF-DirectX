@@ -53,7 +53,7 @@ bool isBackProjectionValid(int2 prevPixPos) {
 // To find the corresponding value, add up the value contribution from those samples
 // (with their weights factored in using bilinear interpolation) and redistribute the value
 // by dividing the weight sum
-bool tapFilter2x2(float2 prevPixPos, out float4 prevIntegratedColor, out float2 prevMoments, out prevHistoryLength) {
+bool tapFilter2x2(float2 prevPixPos, out float4 prevIntegratedColor, out float2 prevMoments, out float prevHistoryLength) {
   // Set everything to 0 just in case
   prevIntegratedColor = float4(0.f);
   prevMoments         = float2(0.f);
@@ -95,7 +95,7 @@ bool tapFilter2x2(float2 prevPixPos, out float4 prevIntegratedColor, out float2 
 // For all of the valid previous neighbor samples (including the previous pixel),
 // To find the corresponding value, add up the value contribution from those samples
 // and redistribute the value uniformly by dividing the number of samples contributing
-bool tapFilter3x3(float2 prevPixPos, out float4 prevIntegratedColor, out float2 prevMoments, out prevHistoryLength) {
+bool tapFilter3x3(float2 prevPixPos, out float4 prevIntegratedColor, out float2 prevMoments, out float prevHistoryLength) {
   // Set everything to 0 just in case
   prevIntegratedColor = float4(0.f);
   prevMoments         = float2(0.f);
@@ -108,7 +108,7 @@ bool tapFilter3x3(float2 prevPixPos, out float4 prevIntegratedColor, out float2 
       if (isBackProjectionValid(prevSamplePixPos)) {
         prevIntegratedColor += gPrevIntegratedColorTex[prevSamplePixPos];
         prevMoments         += gPrevMoments[prevSamplePixPos];
-        prevHistoryLength   += gPrevHistoryLength[prevSamplePixPos]
+        prevHistoryLength += gPrevHistoryLength[prevSamplePixPos];
 
         weightSum++;
       }
@@ -143,14 +143,16 @@ struct GBuffer
 GBuffer main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
 {
   uint2 pixPos = (uint2)pos.xy;
-  float4 rawColor = gRawColor[pixPos];
+  float4 rawColor = gRawColorTex[pixPos];
   float4 worldPos = gWorldPosTex[pixPos];
 
   float4 integratedColor   = float4(0.f);
-  float2 integratedMoments = float4(0.f);
+  float2 integratedMoments = float2(0.f);
   float2 rawMoments      = float2(0.f);
   float  historyLength   = float(0.f);
-  float  variance        = float(0.f)
+  float  variance = float(0.f);
+  float  alpha = gAlpha;
+  float  alphaMoments = gAlphaMoments;
 
   // Compute previous pixel position using the current world position
   // https://docs.google.com/presentation/d/1YkDE7YAqoffC9wUmDxFo9WZjiLqWI5SlQRojOeCBPGs/edit#slide=id.g2492ec6f45_0_342
@@ -179,15 +181,15 @@ GBuffer main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
     alphaMoments  = max(gAlphaMoments, 1.f / historyLength);
   }
   
-  float luminance = getLuminance(rawColor);
+  float luminance = getLuminance(rawColor.xyz);
   rawMoments = float2(luminance, luminance * luminance);
 
   integratedColor   = lerp(prevIntegratedColor, rawColor, alpha);
   integratedMoments = lerp(prevMoments, rawMoments, alphaMoments);
-  variance          = max(0.f, integratedMoments.x - moments.y * moments.y);
+  variance          = max(0.f, integratedMoments.x - integratedMoments.y * integratedMoments.y);
   
   // Dump out our G buffer channels
-  // bogus values jsut for testing
+  // bogus values just for testing
   GBuffer gBufOut;
   gBufOut.integratedColor   = integratedColor;
   gBufOut.integratedMoments = integratedMoments;

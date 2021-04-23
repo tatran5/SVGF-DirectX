@@ -16,29 +16,41 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **********************************************************************************************************************/
 
-#include "Falcor.h"
-#include "Passes/LightProbeGBufferPass.h"
-#include "Passes/SimpleAccumulationPass.h"
-#include "../SharedUtils/RenderingPipeline.h"
-#include "Passes/DiffuseOneShadowRayPass.h"
-#include "Passes/SVGFPass.h"
+// Falcor / Slang imports to include shared code and data structures
+__import Shading;           // Imports ShaderCommon and DefaultVS, plus material evaluation
+__import DefaultVS;         // VertexOut declaration
 
-int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+struct GBuffer
 {
-	// Create our rendering pipeline
-	RenderingPipeline* pipeline = new RenderingPipeline();
+	float4 wsPos    : SV_Target0;
+	float4 wsNorm   : SV_Target1;
+	float4 matDif   : SV_Target2;
+	float4 matSpec  : SV_Target3;
+	float4 matExtra : SV_Target4;
+};
 
-	// Add passes into our pipeline
-	pipeline->setPass(0, LightProbeGBufferPass::create());
-	pipeline->setPass(1, DiffuseOneShadowRayPass::create("RawColor"));    // Replace with our deferred shader that only shoots 1 random shadow ray
-	//pipeline->setPass(2, SimpleAccumulationPass::create( ResourceManager::kOutputChannel));
-	pipeline->setPass(2, SVGFPass::create(ResourceManager::kOutputChannel, "RawColor"));
+// Our main entry point for the g-buffer fragment shader.
+GBuffer main(VertexOut vsOut, uint primID : SV_PrimitiveID, float4 pos : SV_Position)
+{
+	// This is a Falcor built-in that extracts data suitable for shading routines
+	//     (see ShaderCommon.slang for the shading data structure and routines)
+	ShadingData hitPt = prepareShadingData(vsOut, gMaterial, gCamera.posW);
 
-	// Define a set of config / window parameters for our program
-	SampleConfig config;
-	config.windowDesc.title = "SVGF";
-	config.windowDesc.resizableWindow = true;
+	// Check if we hit the back of a double-sided material, in which case, we flip
+	//     normals around here (so we don't need to when shading)
+	float NdotV = dot(normalize(hitPt.N.xyz), normalize(gCamera.posW - hitPt.posW));
+	if (NdotV <= 0.0f && hitPt.doubleSidedMaterial)
+		hitPt.N = -hitPt.N;
 
-	// Start our program!
-	RenderingPipeline::run(pipeline, config);
+	// Dump out our G buffer channels
+	GBuffer gBufOut;
+	gBufOut.wsPos    = float4(hitPt.posW, 1.f);
+	gBufOut.wsNorm   = float4(hitPt.N, length(hitPt.posW - gCamera.posW) );
+	gBufOut.matDif   = float4(hitPt.diffuse, hitPt.opacity);
+	gBufOut.matSpec  = float4(hitPt.specular, hitPt.linearRoughness);
+	gBufOut.matExtra = float4(hitPt.IoR, hitPt.doubleSidedMaterial ? 1.f : 0.f, 0.f, 0.f);
+
+	return gBufOut;
 }
+
+

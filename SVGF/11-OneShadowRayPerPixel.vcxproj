@@ -11,8 +11,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\CommonPasses\LightProbeGBufferPass.cpp" />
-    <ClCompile Include="..\CommonPasses\SimpleAccumulationPass.cpp" />
     <ClCompile Include="..\SharedUtils\FullscreenLaunch.cpp" />
     <ClCompile Include="..\SharedUtils\RayLaunch.cpp" />
     <ClCompile Include="..\SharedUtils\RenderingPipeline.cpp" />
@@ -21,12 +19,12 @@
     <ClCompile Include="..\SharedUtils\SceneLoaderWrapper.cpp" />
     <ClCompile Include="..\SharedUtils\SimpleVars.cpp" />
     <ClCompile Include="Passes\DiffuseOneShadowRayPass.cpp" />
+    <ClCompile Include="Passes\LightProbeGBufferPass.cpp" />
+    <ClCompile Include="Passes\SimpleAccumulationPass.cpp" />
     <ClCompile Include="Passes\SVGFPass.cpp" />
     <ClCompile Include="SVGF.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\CommonPasses\LightProbeGBufferPass.h" />
-    <ClInclude Include="..\CommonPasses\SimpleAccumulationPass.h" />
     <ClInclude Include="..\SharedUtils\FullscreenLaunch.h" />
     <ClInclude Include="..\SharedUtils\RayLaunch.h" />
     <ClInclude Include="..\SharedUtils\RenderingPipeline.h" />
@@ -35,10 +33,13 @@
     <ClInclude Include="..\SharedUtils\SceneLoaderWrapper.h" />
     <ClInclude Include="..\SharedUtils\SimpleVars.h" />
     <ClInclude Include="Passes\DiffuseOneShadowRayPass.h" />
+    <ClInclude Include="Passes\LightProbeGBufferPass.h" />
+    <ClInclude Include="Passes\SimpleAccumulationPass.h" />
     <ClInclude Include="Passes\SVGFPass.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Data\Tutorial11\diffusePlus1ShadowUtils.hlsli" />
+    <None Include="Data\Tutorial11\lightProbeGBufferUtils.hlsli" />
     <None Include="Data\Tutorial11\standardShadowRay.hlsli" />
   </ItemGroup>
   <ItemGroup>
@@ -56,6 +57,22 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Data\Tutorial11\SVGFTemporalPlusVariance.ps.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Data\Tutorial11\SVGFATrous.ps.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Data\Tutorial11\gBuffer.ps.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Data\Tutorial11\gBuffer.vs.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Data\Tutorial11\lightProbeGBuffer.rt.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

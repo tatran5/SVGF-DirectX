@@ -19,7 +19,7 @@
 #include "SVGFPass.h"
 
 namespace {
-	const char* kTemporalPlusVarianceShader = "Tutorial11\\SVGFTemporalPlusVariance.ps.hlsl";
+	const char* kTemporalPlusVarianceShader = "SVGFTemporalPlusVariance.ps.hlsl";
 	
 	// Names of input buffers
 	const char* kWorldPos = "WorldPosition";

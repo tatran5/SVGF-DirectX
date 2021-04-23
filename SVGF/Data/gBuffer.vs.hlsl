@@ -16,29 +16,20 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **********************************************************************************************************************/
 
-#include "Falcor.h"
-#include "Passes/LightProbeGBufferPass.h"
-#include "Passes/SimpleAccumulationPass.h"
-#include "../SharedUtils/RenderingPipeline.h"
-#include "Passes/DiffuseOneShadowRayPass.h"
-#include "Passes/SVGFPass.h"
+// Falcor has a "default" vertex shader (see DefaultVS.slang).  We're explicitly using
+//     that shader (by calling it in main()) rather than implicitly linking to it
 
-int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+// To enable Falcor to pass vertex attributes (position, normal, etc.), include some Falcor constants
+#include "VertexAttrib.h"
+
+// Invokes our Slang shader preprocessor to include the functionality from ShaderCommon.slang.
+__import ShaderCommon;
+
+// Invokes Slang to import the default vertex shader, it's inputs and outputs
+__import DefaultVS;
+
+// Define our main() entry point for our vertex shader, then simply call the default Falcor vertex shader
+VertexOut main(VertexIn vIn)
 {
-	// Create our rendering pipeline
-	RenderingPipeline* pipeline = new RenderingPipeline();
-
-	// Add passes into our pipeline
-	pipeline->setPass(0, LightProbeGBufferPass::create());
-	pipeline->setPass(1, DiffuseOneShadowRayPass::create("RawColor"));    // Replace with our deferred shader that only shoots 1 random shadow ray
-	//pipeline->setPass(2, SimpleAccumulationPass::create( ResourceManager::kOutputChannel));
-	pipeline->setPass(2, SVGFPass::create(ResourceManager::kOutputChannel, "RawColor"));
-
-	// Define a set of config / window parameters for our program
-	SampleConfig config;
-	config.windowDesc.title = "SVGF";
-	config.windowDesc.resizableWindow = true;
-
-	// Start our program!
-	RenderingPipeline::run(pipeline, config);
+	return defaultVS(vIn);
 }

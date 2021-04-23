@@ -20,12 +20,8 @@ cbuffer PerFrameCB
 {
 	//uint gATrousDepth;
 	uint2 gTexDim;
-	float gKernelGaussian[9] = {
-		0.0625,		0.125,		0.0625,
-		0.125,		0.25,			0.125,
-		0.0625,		0.125,		0.0625
-	};
-	float gAKernelTrous[25] = {
+
+	const float gAKernelTrous[25] = {
 		0.0625f,	0.0625f,	0.0625f,	0.0625f,	0.0625f,
 		0.0625f,	0.25f,		0.25f,		0.25f,		0.0625f,
 		0.0625f,	0.25f,		0.375f,		0.25f,		0.0625f,
@@ -62,6 +58,12 @@ float4 main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
 	float4 accumulatedColor = float4(0.f);
 	float weightSum = 0.f; 
 
+	const float kernelGaussian[9] = {
+		0.0625,		0.125,		0.0625,
+		0.125,		0.25,			0.125,
+		0.0625,		0.125,		0.0625
+	};
+
 	for (int x = -1; x <= 1; x++) {
 		for (int y = -1; y <= 1; y++) {
 			
@@ -71,19 +73,19 @@ float4 main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
 			if (neighborPixPos.x >= 0 && neighborPixPos.y >= 0 &&	neighborPixPos.x < gTexDim.x && neighborPixPos.y < gTexDim.y) {
 
 				float4 neighborVal = gIntegratedColorTex[neighborPixPos];
-				float neighborWeight = gKernelGaussian[kernelIdx];
+				float neighborWeight = kernelGaussian[4];
 				weightSum += neighborWeight;
 				accumulatedColor += neighborWeight * neighborVal;
 			}
 		}
 	}
-	
+	//
 	if (weightSum > 0.001f) {
 		accumulatedColor = 1.f / weightSum * accumulatedColor;
 	}
 
-	return gIntegratedColorTex[pixPos];
-	//return float4(accumulatedColor.xyz, 1.f);
+	//return gIntegratedColorTex[pixpos];
+	return float4(accumulatedColor.xyz, 1.f);
 
 	//float varianceFiltered = gKernelVariance[pixPos];
 	//float weightSum = 0.f;

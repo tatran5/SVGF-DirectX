@@ -83,31 +83,31 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\Tutorial11\diffusePlus1ShadowUtils.hlsli">
+    <None Include="Data\diffusePlus1ShadowUtils.hlsli">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Data\Tutorial11\standardShadowRay.hlsli">
+    <None Include="Data\lightProbeGBufferUtils.hlsli">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Data\Tutorial11\diffusePlus1Shadow.rt.hlsl">
+    <None Include="Data\standardShadowRay.hlsli">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Data\Tutorial11\SVGFTemporalPlusVariance.ps.hlsl">
+    <None Include="Data\diffusePlus1Shadow.rt.hlsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Data\Tutorial11\SVGFATrous.ps.hlsl">
+    <None Include="Data\gBuffer.ps.hlsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Data\Tutorial11\lightProbeGBufferUtils.hlsli">
+    <None Include="Data\gBuffer.vs.hlsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Data\Tutorial11\gBuffer.ps.hlsl">
+    <None Include="Data\lightProbeGBuffer.rt.hlsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Data\Tutorial11\gBuffer.vs.hlsl">
+    <None Include="Data\SVGFATrous.ps.hlsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Data\Tutorial11\lightProbeGBuffer.rt.hlsl">
+    <None Include="Data\SVGFTemporalPlusVariance.ps.hlsl">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

@@ -38,16 +38,6 @@
     <ClInclude Include="Passes\SVGFPass.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\Tutorial11\diffusePlus1ShadowUtils.hlsli" />
-    <None Include="Data\Tutorial11\lightProbeGBufferUtils.hlsli" />
-    <None Include="Data\Tutorial11\standardShadowRay.hlsli" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Data\Tutorial11\diffusePlus1Shadow.rt.hlsl">
-      <FileType>Document</FileType>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\Falcor\Framework\FalcorSharedObjects\FalcorSharedObjects.vcxproj">
       <Project>{2c535635-e4c5-4098-a928-574f0e7cd5f9}</Project>
     </ProjectReference>
@@ -56,25 +46,29 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\Tutorial11\SVGFTemporalPlusVariance.ps.hlsl">
+    <None Include="Data\diffusePlus1Shadow.rt.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Data\gBuffer.ps.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Data\gBuffer.vs.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Data\lightProbeGBuffer.rt.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Data\SVGFATrous.ps.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Data\SVGFTemporalPlusVariance.ps.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\Tutorial11\SVGFATrous.ps.hlsl">
-      <FileType>Document</FileType>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Data\Tutorial11\gBuffer.ps.hlsl">
-      <FileType>Document</FileType>
-    </None>
-    <None Include="Data\Tutorial11\gBuffer.vs.hlsl">
-      <FileType>Document</FileType>
-    </None>
-    <None Include="Data\Tutorial11\lightProbeGBuffer.rt.hlsl">
-      <FileType>Document</FileType>
-    </None>
+    <None Include="Data\diffusePlus1ShadowUtils.hlsli" />
+    <None Include="Data\lightProbeGBufferUtils.hlsli" />
+    <None Include="Data\standardShadowRay.hlsli" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D04DA011-0F3F-459E-8B18-41180F9ACCAD}</ProjectGuid>

@@ -43,6 +43,7 @@ protected:
 		Texture::SharedPtr pRawColorTex,
 		Texture::SharedPtr pWorldPosTex,
 		Texture::SharedPtr pWorldNormTex);
+	void executeATrous(RenderContext* pRenderContext, Texture::SharedPtr pWorldNormTex);
 	void renderGui(Gui* pGui) override;
 	void resize(uint32_t width, uint32_t height) override;
 	void stateRefreshed() override;
@@ -61,6 +62,7 @@ protected:
 
 	// State for our accumulation shader
 	FullscreenLaunch::SharedPtr   mpTemporalPlusVarianceShader;
+	FullscreenLaunch::SharedPtr   mpATrousShader;
 	GraphicsState::SharedPtr      mpGfxState;
 	Texture::SharedPtr            mpLastFrame;
 	Fbo::SharedPtr                mpInternalFbo;
@@ -70,6 +72,7 @@ protected:
 	// Fbos for temporal plus variance (TPV) shader; has textures: prevIntegratedColor, moment, variance
 	Fbo::SharedPtr								mpTPVFbo; 
 	Fbo::SharedPtr								mpPrevTPVFbo;
+	Fbo::SharedPtr								mpTestFbo;
 
 	// We stash a copy of our current scene.  Why?  To detect if changes have occurred.
 	Scene::SharedPtr              mpScene;

@@ -20,6 +20,7 @@
 
 namespace {
 	const char* kTemporalPlusVarianceShader = "SVGFTemporalPlusVariance.ps.hlsl";
+	const char* kATrousShader = "SVGFATrous.ps.hlsl";
 	
 	// Names of input buffers
 	const char* kWorldPos = "WorldPosition";
@@ -69,7 +70,7 @@ bool SVGFPass::initialize(RenderContext* pRenderContext, ResourceManager::Shared
 	// Create our graphics state and accumulation shader
 	mpGfxState = GraphicsState::create();
 	mpTemporalPlusVarianceShader = FullscreenLaunch::create(kTemporalPlusVarianceShader);
-
+	mpATrousShader = FullscreenLaunch::create(kATrousShader);
 	return true;
 }
 
@@ -100,6 +101,10 @@ void SVGFPass::initFBO() {
 
 	mpPrevTPVFbo = FboHelper::create2D(mTexDim.x, mTexDim.y, TPVFboDesc);
 	mpTPVFbo = FboHelper::create2D(mTexDim.x, mTexDim.y, TPVFboDesc);
+
+	Fbo::Desc TestFboDesc;
+	TestFboDesc.setColorTarget(0, ResourceFormat::RGBA32Float);
+	mpTestFbo = FboHelper::create2D(mTexDim.x, mTexDim.y, TestFboDesc);
 }
 
 void SVGFPass::resize(uint32_t width, uint32_t height)
@@ -145,10 +150,11 @@ void SVGFPass::execute(RenderContext* pRenderContext)
 	Texture::SharedPtr pOutputTex = mpResManager->getTexture(mOutputTexName);
 
 	executeTemporalPlusVariance(pRenderContext, pRawColorTex, pWorldPosTex, pWorldNormTex);
+	executeATrous(pRenderContext, pWorldNormTex);
 
 	// We've accumulated our result.  Copy that back to the input/output buffer
 	// TEST ONLY
-	pRenderContext->blit(mpTPVFbo->getColorTexture(TPVTextureLocation::IntegratedColor)->getSRV(), pOutputTex->getRTV());
+	pRenderContext->blit(mpTestFbo->getColorTexture(0)->getSRV(), pOutputTex->getRTV());
 
 	// Update fields to be used in next iteration
 	std::swap(mpPrevTPVFbo, mpTPVFbo);
@@ -163,7 +169,7 @@ void SVGFPass::executeTemporalPlusVariance(RenderContext* pRenderContext,
 	Texture::SharedPtr pPrevMoment					= mpPrevTPVFbo->getColorTexture(TPVTextureLocation::Moments);
 	Texture::SharedPtr pPrevHistoryLength   = mpPrevTPVFbo->getColorTexture(TPVTextureLocation::HistoryLength);
 
-	// Set shader parameters for our accumulation
+	// Set shader parameters for our calculation of integrated color and variance
 	auto shaderVars = mpTemporalPlusVarianceShader->getVars();
 	
 	shaderVars["PerFrameCB"]["gPrevViewProjMatrix"] = mpPrevViewProjMatrix;
@@ -182,6 +188,20 @@ void SVGFPass::executeTemporalPlusVariance(RenderContext* pRenderContext,
 	mpGfxState->setFbo(mpTPVFbo);
 	mpTemporalPlusVarianceShader->execute(pRenderContext, mpGfxState);
 }
+
+void SVGFPass::executeATrous(RenderContext* pRenderContext, Texture::SharedPtr pWorldNormTex) {
+	// Internel texture
+	Texture::SharedPtr pIntegratedColor = mpTPVFbo->getColorTexture(TPVTextureLocation::IntegratedColor);
+	
+	// Set shader parameters for our ATrous process
+	auto shaderVars = mpATrousShader->getVars();
+	shaderVars["PerFrameCB"]["gTexDim"] = mTexDim;
+	shaderVars["gIntegratedColorTex"] = pIntegratedColor;
+
+	mpGfxState->setFbo(mpTestFbo);
+	mpATrousShader->execute(pRenderContext, mpGfxState);
+}
+
 
 void SVGFPass::stateRefreshed()
 {

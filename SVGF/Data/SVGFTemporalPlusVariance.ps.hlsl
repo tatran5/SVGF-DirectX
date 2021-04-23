@@ -37,6 +37,9 @@ Texture2D<float4>   gPrevIntegratedColorTex;
 Texture2D<float2>   gPrevMoments;
 Texture2D<float>    gPrevHistoryLength;
 
+float getLuminance(float3 color) {
+  return 0.2126f * color.r + 0.7152f * color.g + 0.0722f * color.b;
+}
 
 bool isBackProjectionValid(int2 prevPixPos) {
   if (any(prevPixPos < int2(0, 0)) || any(prevPixPos >= gTexDim)) return false;
@@ -124,9 +127,7 @@ bool tapFilter3x3(float2 prevPixPos, out float4 prevIntegratedColor, out float2 
   return weightSum > 0;
 }
 
-float getLuminance(float3 color) {
-  return 0.2126f * color.r + 0.7152f * color.g + 0.0722f * color.b;
-}
+ 
 
 struct GBuffer
 {

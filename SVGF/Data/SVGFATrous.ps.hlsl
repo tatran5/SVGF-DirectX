@@ -18,10 +18,12 @@
 
 cbuffer PerFrameCB
 {
-	uint gATrousDepth;
+	//uint gATrousDepth;
 	uint2 gTexDim;
-	float gKernelGaussian[3] = {
-		0.0625f,	0.0125f,	0.25f
+	float gKernelGaussian[9] = {
+		0.0625,		0.125,		0.0625,
+		0.125,		0.25,			0.125,
+		0.0625,		0.125,		0.0625
 	};
 	float gAKernelTrous[25] = {
 		0.0625f,	0.0625f,	0.0625f,	0.0625f,	0.0625f,
@@ -32,9 +34,21 @@ cbuffer PerFrameCB
 	};
 }
 
-Texture2D<float>    gPrevHistoryLength;
-Texture2D<float>    gVariance;
-Texture2D<float>    gDepth ;
+
+Texture2D<float4>  gIntegratedColorTex;
+//Texture2D<float4>  gNormalAndDepthTex;
+//Texture2D<float>   gPrevHistoryLength;
+//Texture2D<float>   gVariance;
+
+float getLuminance(float3 color) {
+	return 0.2126f * color.r + 0.7152f * color.g + 0.0722f * color.b;
+}
+
+void filterVariance() {
+	// ------------------------------------------------------------------
+	// Filter variance with 3x3 gaussian blur
+	// ------------------------------------------------------------------
+}
 
 float4 main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
 {
@@ -43,6 +57,34 @@ float4 main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
 	// ------------------------------------------------------------------
 	// Filter variance with 3x3 gaussian blur
 	// ------------------------------------------------------------------
+	
+	// TEST GAUSSIAN BLUR
+	float4 accumulatedColor = float4(0.f);
+	float weightSum = 0.f; 
+
+	for (int x = -1; x <= 1; x++) {
+		for (int y = -1; y <= 1; y++) {
+			
+			int kernelIdx = (y + 1) * 3 + (x + 1);
+			int2 neighborPixPos = (int2)pos.xy + int2(x, y);
+
+			if (neighborPixPos.x >= 0 && neighborPixPos.y >= 0 &&	neighborPixPos.x < gTexDim.x && neighborPixPos.y < gTexDim.y) {
+
+				float4 neighborVal = gIntegratedColorTex[neighborPixPos];
+				float neighborWeight = gKernelGaussian[kernelIdx];
+				weightSum += neighborWeight;
+				accumulatedColor += neighborWeight * neighborVal;
+			}
+		}
+	}
+	
+	if (weightSum > 0.001f) {
+		accumulatedColor = 1.f / weightSum * accumulatedColor;
+	}
+
+	return gIntegratedColorTex[pixPos];
+	//return float4(accumulatedColor.xyz, 1.f);
+
 	//float varianceFiltered = gKernelVariance[pixPos];
 	//float weightSum = 0.f;
 	//float varianceSum = 0.f;

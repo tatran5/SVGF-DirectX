@@ -38,6 +38,11 @@ enum TPVTextureLocation {
 	Variance				= 3
 };
 
+enum ATrousTextureLocation {
+	ATrousColor = 0,
+	ATrousVariance = 1
+};
+
 SVGFPass::SharedPtr SVGFPass::create(const std::string& outputTexName, const std::string& rawColorTexName) {
 	return SharedPtr(new SVGFPass(outputTexName, rawColorTexName));
 }
@@ -102,9 +107,11 @@ void SVGFPass::initFBO() {
 	mpPrevTPVFbo = FboHelper::create2D(mTexDim.x, mTexDim.y, TPVFboDesc);
 	mpTPVFbo = FboHelper::create2D(mTexDim.x, mTexDim.y, TPVFboDesc);
 
-	Fbo::Desc TestFboDesc;
-	TestFboDesc.setColorTarget(0, ResourceFormat::RGBA32Float);
-	mpTestFbo = FboHelper::create2D(mTexDim.x, mTexDim.y, TestFboDesc);
+	Fbo::Desc ATrousFBO;
+	ATrousFBO.setColorTarget(ATrousTextureLocation::ATrousColor, ResourceFormat::RGBA32Float);
+	ATrousFBO.setColorTarget(ATrousTextureLocation::ATrousVariance, ResourceFormat::R32Float);
+	mpATrousFbo[0] = FboHelper::create2D(mTexDim.x, mTexDim.y, ATrousFBO);
+	mpATrousFbo[1] = FboHelper::create2D(mTexDim.x, mTexDim.y, ATrousFBO);
 }
 
 void SVGFPass::resize(uint32_t width, uint32_t height)
@@ -150,11 +157,7 @@ void SVGFPass::execute(RenderContext* pRenderContext)
 	Texture::SharedPtr pOutputTex = mpResManager->getTexture(mOutputTexName);
 
 	executeTemporalPlusVariance(pRenderContext, pRawColorTex, pWorldPosTex, pWorldNormTex);
-	executeATrous(pRenderContext, pWorldNormTex);
-
-	// We've accumulated our result.  Copy that back to the input/output buffer
-	// TEST ONLY
-	pRenderContext->blit(mpTestFbo->getColorTexture(0)->getSRV(), pOutputTex->getRTV());
+	executeATrous(pRenderContext, pWorldNormTex, pOutputTex);
 
 	// Update fields to be used in next iteration
 	std::swap(mpPrevTPVFbo, mpTPVFbo);
@@ -189,17 +192,44 @@ void SVGFPass::executeTemporalPlusVariance(RenderContext* pRenderContext,
 	mpTemporalPlusVarianceShader->execute(pRenderContext, mpGfxState);
 }
 
-void SVGFPass::executeATrous(RenderContext* pRenderContext, Texture::SharedPtr pWorldNormTex) {
-	// Internel texture
-	Texture::SharedPtr pIntegratedColor = mpTPVFbo->getColorTexture(TPVTextureLocation::IntegratedColor);
-	
-	// Set shader parameters for our ATrous process
-	auto shaderVars = mpATrousShader->getVars();
-	shaderVars["PerFrameCB"]["gTexDim"] = mTexDim;
-	shaderVars["gIntegratedColorTex"] = pIntegratedColor;
+void SVGFPass::executeATrous(RenderContext* pRenderContext, Texture::SharedPtr pWorldNormTex, Texture::SharedPtr pOutputTex) {
+	// Internel textures
+	Texture::SharedPtr pTPVIntegratedColor = mpTPVFbo->getColorTexture(TPVTextureLocation::IntegratedColor);
+	Texture::SharedPtr pTPVVariance = mpTPVFbo->getColorTexture(TPVTextureLocation::Variance);
 
-	mpGfxState->setFbo(mpTestFbo);
-	mpATrousShader->execute(pRenderContext, mpGfxState);
+	// Ping pong textures
+	Texture::SharedPtr pATrousColor[2];
+	pATrousColor[0] = mpATrousFbo[0]->getColorTexture(ATrousTextureLocation::ATrousColor);
+	pATrousColor[1] = mpATrousFbo[1]->getColorTexture(ATrousTextureLocation::ATrousColor);
+
+	Texture::SharedPtr pATrousVariance[2];
+	pATrousVariance[0] = mpATrousFbo[0]->getColorTexture(ATrousTextureLocation::ATrousVariance);
+	pATrousVariance[1] = mpATrousFbo[1]->getColorTexture(ATrousTextureLocation::ATrousVariance);
+
+	// Transfer results from previous shader to the first buffer of this shader to automate ping-pong process
+	pRenderContext->blit(pTPVIntegratedColor->getSRV(), pATrousColor[0]->getRTV());
+	pRenderContext->blit(pTPVVariance->getSRV(), pATrousVariance[0]->getRTV());
+
+	int neighborDist = 1;
+	int atrousDepth = 10;
+
+	for (int i = 0; i < atrousDepth; i++) {
+		// Set shader parameters for our ATrous process
+		auto shaderVars = mpATrousShader->getVars();
+		shaderVars["PerFrameCB"]["gTexDim"] = mTexDim;
+		shaderVars["gColorTex"] = pATrousColor[i % 2];
+		shaderVars["gVarianceTex"] = pATrousVariance[i % 2];
+		shaderVars["gWorldNormTex"] = pWorldNormTex;
+
+		mpGfxState->setFbo(mpATrousFbo[(i + 1) % 2]);
+		mpATrousShader->execute(pRenderContext, mpGfxState);
+	}
+
+	// Save the final result to output texture
+	pRenderContext->blit(pATrousColor[atrousDepth % 2]->getSRV(), pOutputTex->getRTV());
+
+	// Save the filtered color to be used for next temporal filtering
+	pRenderContext->blit(pATrousColor[atrousDepth % 2]->getSRV(), pTPVIntegratedColor->getRTV());
 }
 
 

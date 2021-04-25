@@ -37,13 +37,18 @@ protected:
 	bool initialize(RenderContext* pRenderContext, ResourceManager::SharedPtr pResManager) override;
 	void initScene(RenderContext* pRenderContext, Scene::SharedPtr pScene) override;
 	void initFBO();
+
 	void execute(RenderContext* pRenderContext) override;
 	void executeTemporalPlusVariance(
-		RenderContext* pRenderContext, 
+		RenderContext* pRenderContext,
 		Texture::SharedPtr pRawColorTex,
 		Texture::SharedPtr pWorldPosTex,
 		Texture::SharedPtr pWorldNormTex);
-	void executeATrous(RenderContext* pRenderContext, Texture::SharedPtr pWorldNormTex);
+	void executeATrous(
+		RenderContext* pRenderContext, 
+		Texture::SharedPtr pWorldNormTex,
+		Texture::SharedPtr pOutputTex);
+
 	void renderGui(Gui* pGui) override;
 	void resize(uint32_t width, uint32_t height) override;
 	void stateRefreshed() override;
@@ -66,13 +71,13 @@ protected:
 	GraphicsState::SharedPtr      mpGfxState;
 	Texture::SharedPtr            mpLastFrame;
 	Fbo::SharedPtr                mpInternalFbo;
-	
+
 	// Internal FBOs
 
 	// Fbos for temporal plus variance (TPV) shader; has textures: prevIntegratedColor, moment, variance
-	Fbo::SharedPtr								mpTPVFbo; 
+	Fbo::SharedPtr								mpTPVFbo;
 	Fbo::SharedPtr								mpPrevTPVFbo;
-	Fbo::SharedPtr								mpTestFbo;
+	Fbo::SharedPtr								mpATrousFbo[2];
 
 	// We stash a copy of our current scene.  Why?  To detect if changes have occurred.
 	Scene::SharedPtr              mpScene;

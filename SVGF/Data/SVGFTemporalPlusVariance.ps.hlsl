@@ -141,7 +141,7 @@ struct GBuffer
 };
 
 
-GBuffer main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
+GBuffer main(float2 texC : TEXCOORD, float4 pos : SV_Position)
 {
   uint2 pixPos = (uint2)pos.xy;
   float4 rawColor = gRawColorTex[pixPos];

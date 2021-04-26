@@ -133,11 +133,15 @@ void SVGFPass::renderGui(Gui* pGui)
 {
 	int dirty = 0;
 	dirty |= (int)pGui->addCheckBox(mDoSVGF ? "SVGF is on" : "SVGF is off", mDoSVGF);
-	dirty |= (int)pGui->addIntVar("Number of ATrous iteration per pass", mATrousIteration, 1, 5, 1);
-	
+	dirty |= (int)pGui->addIntVar("No. of iterations", mATrousIteration, 1, 5, 1);
+	dirty |= (int)pGui->addFloatVar("Depth sigma", mATrousSigmaZ, 1, 10, 0.5);
+	dirty |= (int)pGui->addFloatVar("Normal sigma", mATrousSigmaN, 1, 150, 1);
+	dirty |= (int)pGui->addFloatVar("Luminance sigma", mATrousSigmaL, 1, 100, 0.5);
+
+	if (dirty) setRefreshFlag();
 }
 
-void SVGFPass::execute(RenderContext* pRenderContext)
+void SVGFPass::execute(RenderContext* pRenderContext) {
 	// Input textures
 	Texture::SharedPtr pRawColorTex = mpResManager->getTexture(mRawColorTexName);
 	Texture::SharedPtr pWorldPosTex = mpResManager->getTexture(kWorldPos);
@@ -201,14 +205,20 @@ void SVGFPass::executeATrous(RenderContext* pRenderContext, Texture::SharedPtr p
 	int neighborDist = 1;
 	int atrousDepth = 2;
 	pATrousColor[0]->captureToFile(0, 0,
-		"D:\\Academics\\497\\SVGF-DirectX\\testImages\\test0.PNG",
-		Bitmap::FileFormat::PngFile);
+			"D:\\Academics\\497\\SVGF-DirectX\\testImages\\SVGFz" + std::to_string(mATrousSigmaZ) +
+			"n" + std::to_string(mATrousSigmaN) +
+			"l" + std::to_string(mATrousSigmaL) +
+			"i" + std::to_string(0) + ".EXR",
+			Bitmap::FileFormat::ExrFile);
 
-	for (int i = 0; i < atrousDepth; i++) {
+	for (int i = 0; i < mATrousIteration; i++) {
 		// Set shader parameters for our ATrous process
 		auto shaderVars = mpATrousShader->getVars();
 		shaderVars["PerFrameCB"]["gTexDim"] = mTexDim;
 		shaderVars["PerFrameCB"]["gNeighborDist"] = neighborDist;
+		shaderVars["PerFrameCB"]["sigmaZ"] = mATrousSigmaZ;
+		shaderVars["PerFrameCB"]["sigmaN"] = mATrousSigmaN;
+		shaderVars["PerFrameCB"]["sigmaL"] = mATrousSigmaL;
 		shaderVars["gColorTex"] = pATrousColor[i % 2];
 		shaderVars["gVarianceTex"] = pATrousVariance[i % 2];
 		shaderVars["gWorldNormTex"] = pWorldNormTex;
@@ -225,12 +235,15 @@ void SVGFPass::executeATrous(RenderContext* pRenderContext, Texture::SharedPtr p
 
 		// Save result to a texture for testing
 		pATrousColor[(i + 1) % 2]->captureToFile(0, 0,
-			"D:\\Academics\\497\\SVGF-DirectX\\testImages\\test" + std::to_string(i) + ".EXR",
+			"D:\\Academics\\497\\SVGF-DirectX\\testImages\\SVGFz" + std::to_string(mATrousSigmaZ) +
+				"n" + std::to_string(mATrousSigmaN) + 
+				"l" + std::to_string(mATrousSigmaL) +
+				"i" + std::to_string(i + 1) + ".EXR",
 			Bitmap::FileFormat::ExrFile);
 	}
 
 	// Save the final result to output texture
-	pRenderContext->blit(pATrousColor[atrousDepth % 2]->getSRV(), pOutputTex->getRTV());
+	pRenderContext->blit(pATrousColor[mATrousIteration % 2]->getSRV(), pOutputTex->getRTV());
 }
 
 

@@ -97,7 +97,7 @@ GBuffer main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
 	
 	float variance = gVarianceTex[pixPos];
 	float filteredVariance = filterVariance(pixPos); // 4 is recommened var in paper, add epsilon to avoid division by 0
-	float denomWeightL = 4 * sqrt(filteredVariance) + 0.001f;
+	float denomWeightL = sigmaL * sqrt(filteredVariance) + 0.001f;
 
 	for (int x = -2; x <= 2; x++) {
 		for (int y = -2; y <= 2; y++) {
@@ -112,10 +112,9 @@ GBuffer main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
 				float neighborLuminance = getLuminance(neighborColor.xyz);
 				float neighborVariance = gVarianceTex[neighborPixPos];
 
-				float weightZ = exp(-abs(normPlusDepth.w - neighborNormPlusDepth.w));
+				float weightZ = exp(-abs(normPlusDepth.w - neighborNormPlusDepth.w) / sigmaZ);
 
-				// 128 is recommended var in paper
-				float weightN = pow(max(0, dot(normPlusDepth.xyz, neighborNormPlusDepth.xyz)), 128);
+				float weightN = pow(max(0, dot(normPlusDepth.xyz, neighborNormPlusDepth.xyz)), sigmaN);
 
 				float weightL = exp(-abs(luminance - neighborLuminance) / denomWeightL); // luminance weight					
 

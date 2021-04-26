@@ -14,6 +14,7 @@ Rendering in real-time with ray tracing is a challenge due to the requirement of
 ## SVGF pipeline
 
 ## Implementation
+The SVGF pass includes two main sequential steps (where each step is processed in parallel): temporal filtering with variance calculation, and spatial filtering.
 
 ## Performance analysis
 
@@ -21,7 +22,10 @@ Rendering in real-time with ray tracing is a challenge due to the requirement of
 
 #### Noise at the edge of the renders
 
-#### 
+#### Spatial patches
+
+#### Blurred
+
 
 ### Runtime
 
@@ -32,4 +36,7 @@ Rendering in real-time with ray tracing is a challenge due to the requirement of
 - Current G-buffers are obtained through ray-tracing, which can be slower than using rasterization. The runtime can be improved if the current pipeline is changed to hybrid rendering.
 
 #### Buffer packing
-- Since reading from and writing to buffers are expensive, the world position buffer can be packed into depth buffer and stored as the fourth element in the normal buffer. 
+- Since reading from and writing to buffers are expensive, the world position buffer can be packed into depth buffer and stored as the fourth element in the normal buffer. Right now the fourth element of the normal buffer is linear depth value, but we can retrieve both world position and linear depth value from the conventional depth value. 
+
+#### Better backprojection for temporal
+- The current implementation only considers whether the backproject pixel is out of frame, and ignores comparing depth difference, normal difference, mesh IDs, as well as motion as the paper suggests.

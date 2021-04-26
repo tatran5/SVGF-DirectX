@@ -2,11 +2,11 @@
 University of Pennsylvania, CIS 497 Senior Design
 
 ## Table of contents
-- Introduction
-- SVGF pipeline
-- Implementation
-- Performance analysis
-- Potential improvements
+- [Introduction](#introduction)
+- [SVGF pipeline](#svgf-pipeline)
+- [Implementation](#implementation)
+- [Performance analysis](#performance-analysis)
+- [Potential improvements](#potential-improvements)
 
 ## Introduction
 Rendering in real-time with ray tracing is a challenge due to the requirement of a noise-free render, yet with only few samples per pixel. To avoid spending a lot of time to accumulate samples and get a decent render, denoising methods are introduced to process renders with few samples per pixel and get a noise-free result. Spatiotemporal Variance-Guided Filtering with DirectX is one of the methods to do so. The method utilizes spatial data (from neighboring pixels) within the same frame and temporal data (from previous frames) to smooth out each render. 

@@ -131,25 +131,13 @@ void SVGFPass::resize(uint32_t width, uint32_t height)
 
 void SVGFPass::renderGui(Gui* pGui)
 {
-	// Print the name of the buffer we're accumulating from and into.  Add a blank line below that for clarity
-	pGui->addText((std::string("Accumulating buffer:   ") + mOutputTexName).c_str());
-	pGui->addText("");
-
-	// Add a toggle to enable/disable temporal accumulation.  Whenever this toggles, reset the
-	//     frame count and tell the pipeline we're part of that our rendering options have changed.
-	if (pGui->addCheckBox(mDoAccumulation ? "Accumulating samples temporally" : "No temporal accumulation", mDoAccumulation))
-	{
-		mAccumCount = 0;
-		setRefreshFlag();
-	}
-
-	// Display a count of accumulated frames
-	pGui->addText("");
-	pGui->addText((std::string("Frames accumulated: ") + std::to_string(mAccumCount)).c_str());
+	int dirty = 0;
+	dirty |= (int)pGui->addCheckBox(mDoSVGF ? "SVGF is on" : "SVGF is off", mDoSVGF);
+	dirty |= (int)pGui->addIntVar("Number of ATrous iteration per pass", mATrousIteration, 1, 5, 1);
+	
 }
 
 void SVGFPass::execute(RenderContext* pRenderContext)
-{
 	// Input textures
 	Texture::SharedPtr pRawColorTex = mpResManager->getTexture(mRawColorTexName);
 	Texture::SharedPtr pWorldPosTex = mpResManager->getTexture(kWorldPos);
@@ -211,25 +199,38 @@ void SVGFPass::executeATrous(RenderContext* pRenderContext, Texture::SharedPtr p
 	pRenderContext->blit(pTPVVariance->getSRV(), pATrousVariance[0]->getRTV());
 
 	int neighborDist = 1;
-	int atrousDepth = 10;
+	int atrousDepth = 2;
+	pATrousColor[0]->captureToFile(0, 0,
+		"D:\\Academics\\497\\SVGF-DirectX\\testImages\\test0.PNG",
+		Bitmap::FileFormat::PngFile);
 
 	for (int i = 0; i < atrousDepth; i++) {
 		// Set shader parameters for our ATrous process
 		auto shaderVars = mpATrousShader->getVars();
 		shaderVars["PerFrameCB"]["gTexDim"] = mTexDim;
+		shaderVars["PerFrameCB"]["gNeighborDist"] = neighborDist;
 		shaderVars["gColorTex"] = pATrousColor[i % 2];
 		shaderVars["gVarianceTex"] = pATrousVariance[i % 2];
 		shaderVars["gWorldNormTex"] = pWorldNormTex;
 
 		mpGfxState->setFbo(mpATrousFbo[(i + 1) % 2]);
 		mpATrousShader->execute(pRenderContext, mpGfxState);
+		
+		if (i == 0) {
+			// Save the filtered color to be used for next temporal filtering
+			pRenderContext->blit(pATrousColor[1]->getSRV(), pTPVIntegratedColor->getRTV());
+		}
+
+		neighborDist *= 2;
+
+		// Save result to a texture for testing
+		pATrousColor[(i + 1) % 2]->captureToFile(0, 0,
+			"D:\\Academics\\497\\SVGF-DirectX\\testImages\\test" + std::to_string(i) + ".EXR",
+			Bitmap::FileFormat::ExrFile);
 	}
 
 	// Save the final result to output texture
 	pRenderContext->blit(pATrousColor[atrousDepth % 2]->getSRV(), pOutputTex->getRTV());
-
-	// Save the filtered color to be used for next temporal filtering
-	pRenderContext->blit(pATrousColor[atrousDepth % 2]->getSRV(), pTPVIntegratedColor->getRTV());
 }
 
 

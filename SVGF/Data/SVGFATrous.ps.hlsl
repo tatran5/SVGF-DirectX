@@ -20,7 +20,10 @@ cbuffer PerFrameCB
 {
 	//uint gATrousDepth;
 	uint2 gTexDim;
-	uint neighborDist;
+	int gNeighborDist;
+	float sigmaZ;
+	float sigmaN;
+	float sigmaL;
 }
 
 // Input buffer
@@ -82,8 +85,6 @@ GBuffer main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
 		0.0625f,	0.0625f,	0.0625f,	0.0625f,	0.0625f
 	};
 
-	uint gATrousDepth = 1;
-
 	float4 normPlusDepth = gWorldNormTex[pixPos];
 	float4 color = gColorTex[pixPos];
 
@@ -100,7 +101,7 @@ GBuffer main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
 
 	for (int x = -2; x <= 2; x++) {
 		for (int y = -2; y <= 2; y++) {
-			int2 neighborPixPos = neighborDist * int2(x, y) + int2(pixPos);
+			int2 neighborPixPos = gNeighborDist * int2(x, y) + int2(pixPos);
 			int kernelIdx = (y + 2) * 5 + (x + 2);
 			float kernelVal = kernelATrous[kernelIdx];
 
@@ -133,7 +134,7 @@ GBuffer main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
 	}
 
 	GBuffer gBufOut;
-	gBufOut.filteredColor = color;
+	gBufOut.filteredColor = float4(color.xyz, 1.f);
 	gBufOut.variance = variance;
 
 	return gBufOut;

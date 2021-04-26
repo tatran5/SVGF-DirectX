@@ -85,6 +85,13 @@ protected:
 
 	// Is our accumulation enabled?
 	bool                          mDoAccumulation = true;
+	
+	// GUI fields (also used as input variables in the pass
+	bool mDoSVGF = true;
+	int mATrousIteration = 1;
+	float mSigmaZ = 1;
+	float mSigmaN = 128;
+	float mSigmaL = 4;
 
 	// How many frames have we accumulated so far?
 	uint32_t                      mAccumCount = 0;
